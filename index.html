@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gold Forecaster">
+<title>XAU/USD Live Forecaster (Free)</title>
+<style>
+:root{--bg:#0a0e13;--card:#121821;--card2:#18202b;--line:#243042;--txt:#e6edf5;--mut:#8b98a9;--gold:#e8b84a;--up:#22c55e;--dn:#ef4444;--blue:#5b9dff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif}
+.app{max-width:980px;margin:0 auto;padding:12px 12px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+h1{font-size:16px;margin:0}
+h1 span{color:var(--gold)}
+h2{font-size:13px;margin:0 0 10px;color:var(--mut);text-transform:uppercase;letter-spacing:.8px;font-weight:600}
+.pill{font-size:11px;padding:4px 9px;border-radius:999px;background:var(--card2);color:var(--mut);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--mut)}
+.dot.live{background:var(--up);animation:pulse 2s infinite}
+.dot.warn{background:#f59e0b}.dot.err{background:var(--dn)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.55)}70%{box-shadow:0 0 0 8px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.hero{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.price{font-size:34px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.chg{font-size:14px;font-weight:600;margin-left:8px}
+.up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}.goldc{color:var(--gold)}
+.small{font-size:12px}.tiny{font-size:11px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:92px}
+.chip .k{font-size:11px;color:var(--mut)}.chip .v{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}.chip .d{font-size:11px;font-weight:600}
+.chartwrap{position:relative;width:100%}
+#chart{width:100%;height:240px;display:block;touch-action:pan-y}
+#pchart{width:100%;height:200px;display:block;touch-action:pan-y}
+.tip{position:absolute;pointer-events:none;background:#0b1118ee;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:11px;white-space:nowrap;display:none;z-index:2}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--mut);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.headline{font-size:15px;font-weight:600;margin:8px 0 6px;line-height:1.4}
+.gauge{height:10px;border-radius:6px;background:linear-gradient(90deg,var(--dn),#3a4556 50%,var(--up));position:relative;margin:10px 0 4px}
+.gauge b{position:absolute;top:-4px;width:4px;height:18px;border-radius:2px;background:#fff;transform:translateX(-50%);transition:left .6s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bars .b{display:grid;grid-template-columns:110px 1fr 44px;align-items:center;gap:8px;margin:6px 0;font-size:12px}
+.track{height:8px;background:var(--card2);border-radius:5px;position:relative;overflow:hidden}
+.track::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#3a4556}
+.fill{position:absolute;top:0;bottom:0;border-radius:5px}
+.scen{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:560px){.scen{grid-template-columns:repeat(3,1fr)}}
+.sc{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--card2)}
+.sc .t{font-size:12px;font-weight:700}.sc .p{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0}
+.levels{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.lv{font-size:11px;padding:4px 8px;border-radius:7px;background:var(--card2);border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.drv{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(min-width:560px){.drv{grid-template-columns:repeat(3,1fr)}}
+.dv{background:var(--card2);border-radius:10px;padding:9px 10px;border:1px solid var(--line)}
+.dv .k{font-size:11px;color:var(--mut)}.dv .v{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}.dv .e{font-size:11px;font-weight:600}
+.news{list-style:none;margin:0;padding:0}
+.news li{padding:9px 0;border-top:1px solid var(--line)}
+.news li:first-child{border-top:0}
+.news a{color:var(--txt);text-decoration:none;font-weight:600}
+.tag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;margin-right:6px;text-transform:uppercase;letter-spacing:.4px}
+.tag.bull{background:#123821;color:var(--up)}.tag.bear{background:#3a1416;color:var(--dn)}.tag.neu{background:#232c38;color:var(--mut)}
+.btn{background:var(--card2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+.btn.gold{background:var(--gold);color:#1a1405;border-color:var(--gold);font-weight:700}
+.calls{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 10px}
+.call{font-size:11px;font-weight:700;padding:4px 7px;border-radius:7px;font-variant-numeric:tabular-nums}
+.call.ok{background:#123821;color:var(--up)}.call.no{background:#3a1416;color:var(--dn)}.call.fl{background:#232c38;color:var(--mut)}
+.sighead{display:flex;gap:12px;align-items:center}
+.sigbadge{font-size:20px;font-weight:900;letter-spacing:1px;padding:10px 14px;border-radius:12px;min-width:84px;text-align:center}
+.sigbadge.b{background:#14532d;color:#bbf7d0}.sigbadge.s{background:#7f1d1d;color:#fecaca}.sigbadge.w{background:#232c38;color:var(--mut)}
+.siglv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;background:var(--card2);border-radius:10px;padding:10px}
+.siglv4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;background:var(--card2);border-radius:10px;padding:10px}
+@media(max-width:420px){.siglv4{grid-template-columns:repeat(2,1fr)}}
+.ptitle{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600}
+.lsbar{display:flex;height:22px;border-radius:7px;overflow:hidden;font-size:11px;font-weight:700}
+.lsbar div{display:flex;align-items:center;padding:0 8px;white-space:nowrap;transition:width .6s}
+.lsbar .l{background:#16502c;color:#bff5d2}
+.lsbar .s{background:#5a1c1f;color:#ffd0d0;justify-content:flex-end}
+.warnbox{border:1px solid #6b4b12;background:#2a1f0b;color:#f3d18a;border-radius:10px;padding:10px;font-size:12px;margin-bottom:12px;display:none}
+table.tr{width:100%;border-collapse:collapse;font-size:12px}
+table.tr td,table.tr th{padding:6px 4px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+table.tr th{color:var(--mut);font-weight:600;border-top:0}
+table.tr td:first-child,table.tr th:first-child{text-align:left}
+footer{font-size:11px;color:var(--mut);margin-top:16px;line-height:1.6}
+footer a{color:var(--mut)}
+.skel{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span>XAU/USD</span> Live Forecaster</h1>
+    <span class="pill"><span class="dot" id="sdot"></span><span id="stext">Connecting…</span></span>
+  </header>
+  <div class="warnbox" id="warn"></div>
+
+  <section class="card">
+    <div class="hero">
+      <div>
+        <div class="tiny mut" id="pxlabel">Gold · USD/oz</div>
+        <div><span class="price" id="px">—</span><span class="chg" id="pxchg"></span></div>
+        <div class="tiny mut" id="asof">Loading prices…</div>
+      </div>
+      <div class="chips">
+        <div class="chip"><div class="k">+5 min</div><div class="v" id="f5">—</div><div class="d" id="f5d"></div></div>
+        <div class="chip"><div class="k">+15 min</div><div class="v" id="f15">—</div><div class="d" id="f15d"></div></div>
+        <div class="chip"><div class="k">+30 min</div><div class="v" id="f30">—</div><div class="d" id="f30d"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="sigcard">
+    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">Trade signal</h2><span class="tiny mut">next 30 min</span></div>
+    <div id="signalbox"><div class="small skel">The first signal appears with the first forecast.</div></div>
+  </section>
+
+  <section class="card">
+    <div class="row"><h2 style="margin:0">Where gold is heading</h2><span class="tiny mut" id="countdown">Next forecast in —</span></div>
+    <div class="headline" id="chead">Waiting for the first forecast…</div>
+    <div class="chartwrap">
+      <svg id="chart" aria-label="Gold price over the last 30 minutes and the forecast for the next 30 minutes"></svg>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--gold)"></i>Price so far</span>
+      <span><i id="lgfc" style="background:var(--up)"></i>Forecast</span>
+      <span><i style="background:rgba(139,152,169,.3);height:8px"></i>Likely range</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="margin-bottom:6px;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">Were the forecasts right?</h2>
+      <div style="display:flex;gap:6px" id="hbtns">
+        <button class="btn" data-h="5">5 min</button>
+        <button class="btn gold" data-h="15">15 min</button>
+        <button class="btn" data-h="30">30 min</button>
+      </div>
+    </div>
+    <div class="headline" id="predsum">No forecasts scored yet.</div>
+    <div class="calls" id="calls"></div>
+    <div class="chartwrap">
+      <svg id="pchart" aria-label="Forecast prices compared with actual gold price"></svg>
+      <div class="tip" id="ptip"></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--gold)"></i>Actual price</span>
+      <span><i style="background:var(--blue)"></i>What was forecast</span>
+      <span>✓ right direction · ✗ wrong</span>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Current call</h2>
+      <div class="row"><div><span style="font-size:22px;font-weight:800" id="bias">—</span> <span class="small mut" id="conf"></span></div><div class="small" id="pup"></div></div>
+      <div class="gauge"><b id="gneedle" style="left:50%"></b></div>
+      <div class="row tiny mut"><span>Bearish</span><span>Neutral</span><span>Bullish</span></div>
+      <div class="bars" id="bars" style="margin-top:10px"></div>
+      <div class="tiny mut" id="ftime"></div>
+    </section>
+    <section class="card">
+      <h2>How the market may react · next 15–30 min</h2>
+      <div class="small" id="reacttxt"><span class="skel">Builds after the first forecast.</span></div>
+      <div class="scen" id="scen" style="margin-top:10px"></div>
+      <div class="levels" id="levels"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">What other traders are doing</h2><span class="tiny mut">PAXG market on Coinbase</span></div>
+    <div class="ptitle">Who's buying vs selling (real trades)</div>
+    <div id="flow"><div class="small skel">Loading trades…</div></div>
+    <div class="ptitle" style="margin-top:14px">Waiting orders (order book)</div>
+    <div id="book"><div class="small skel">Loading order book…</div></div>
+  </section>
+
+  <section class="card">
+    <h2>Drivers (gold impact)</h2>
+    <div class="drv" id="drv"><div class="skel small">Loading…</div></div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="margin-bottom:6px"><h2 style="margin:0">Gold &amp; USD news monitor</h2><span class="tiny mut" id="newsmeta"></span></div>
+    <div class="small" id="newssent" style="margin-bottom:6px"></div>
+    <ul class="news" id="news"><li class="skel small">Loading headlines…</li></ul>
+  </section>
+
+  <section class="card">
+    <h2>Track record (this device)</h2>
+    <div id="track" class="small"><span class="skel">Each forecast is scored automatically once its 5-, 15- and 30-minute targets pass.</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Data sources</h2>
+    <div id="sources"><div class="tiny mut">Checking feeds…</div></div>
+    <div class="tiny mut" style="margin-top:6px">✓ = working on this device, ✗ = blocked or offline. The app automatically uses whichever price feed works.</div>
+  </section>
+
+  <footer>
+    100% free data, no account or key needed. Gold: spot XAU/USD from Coinbase's public exchange rates when available, otherwise PAXG (a token backed 1:1 by a London Good Delivery gold ounce that tracks spot closely), with Binance as a last backup. Dollar: euro rate from the same feed. Trades and order book: Coinbase PAXG market. News: <a href="https://www.gdeltproject.org" target="_blank" rel="noopener">GDELT</a>, scored by keywords. Prices refresh every minute; news every 10 minutes.<br>
+    Forecasts are statistical estimates from momentum, dollar moves, order flow and news tone, with ranges sized from recent volatility. Short-term gold moves are mostly noise; this is a decision aid, not financial advice.
+  </footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+var MIN = 60000;
+var $ = function(id){ return document.getElementById(id); };
+var LS = {
+  get: function(k, d){ try{ var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set: function(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+var S = {
+  ticks: [], eur: [], trades: [], goldSrc: null, forecasts: LS.get("xauf_fc", []).filter(function(f){ return f && f.t0 > Date.now() - 24*60*MIN; }),
+  news: [], d24: null, eur24: null, book: null, lastOk: 0, lastSlot: -1, cur: null, newsAt: 0
+};
+
+// ---------- helpers ----------
+function fmt(n, d){ if(n == null || isNaN(n)) return "—"; d = d == null ? 2 : d; return n.toLocaleString("en-US",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function sgn(n, d){ if(n == null || isNaN(n)) return "—"; return (n >= 0 ? "+" : "") + fmt(n, d); }
+function cls(n){ return n > 0 ? "up" : n < 0 ? "dn" : "mut"; }
+function clamp(x, a, b){ return Math.max(a, Math.min(b, x)); }
+function tanh(x){ var e = Math.exp(2*x); return (e-1)/(e+1); }
+function Phi(x){ var t = 1/(1+0.2316419*Math.abs(x)), d = 0.3989423*Math.exp(-x*x/2); var p = d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return x > 0 ? 1-p : p; }
+function hhmm(t){ return new Date(t).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}); }
+function ago(t){ var m = Math.round((Date.now()-t)/MIN); if(m < 1) return "just now"; if(m < 60) return m+"m ago"; return Math.floor(m/60)+"h "+(m%60)+"m ago"; }
+function el(tag, attrs, kids){
+  var e = document.createElement(tag);
+  if(attrs) for(var k in attrs){ if(k === "text") e.textContent = attrs[k]; else if(k === "cls") e.className = attrs[k]; else e.setAttribute(k, attrs[k]); }
+  (kids||[]).forEach(function(c){ if(c != null) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+  return e;
+}
+function clear(e){ while(e.firstChild) e.removeChild(e.firstChild); }
+function setStatus(kind, text){ $("sdot").className = "dot " + kind; $("stext").textContent = text; }
+function warn(msg){ var w = $("warn"); w.textContent = msg || ""; w.style.display = msg ? "block" : "none"; }
+
+// ---------- data ----------
+// ---------- data sources (all free, no key) ----------
+var SRC = {};
+function srcSet(k, ok, msg){ SRC[k] = { ok: ok, msg: msg || "", at: Date.now() }; renderSources(); }
+function getJSON(url, ms){
+  var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  var to = setTimeout(function(){ if(ctl) ctl.abort(); }, ms || 9000);
+  return fetch(url, { cache: "no-store", signal: ctl ? ctl.signal : undefined }).then(function(r){
+    clearTimeout(to);
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }, function(e){ clearTimeout(to); throw new Error(e && e.name === "AbortError" ? "timed out" : "blocked or offline"); });
+}
+var CB = "https://api.coinbase.com/v2", CBX = "https://api.exchange.coinbase.com";
+var BN = ["https://data-api.binance.vision", "https://api.binance.com"];
+function minuteEnd(t){ return Math.floor(t/MIN)*MIN + MIN; }
+function upsert(arr, pt){
+  var last = arr[arr.length-1];
+  if(last && last.t === pt.t){ last.p = pt.p; last.h = Math.max(last.h, pt.p); last.l = Math.min(last.l, pt.p); if(pt.v != null){ last.v = pt.v; last.tb = pt.tb; last.n = pt.n; } }
+  else if(!last || pt.t > last.t){ arr.push(pt); if(arr.length > 720) arr.splice(0, arr.length - 720); }
+}
+// Gold + euro spot from Coinbase public rates (CORS-enabled)
+function fetchSpot(){
+  var gold = null, eur = null, srcName = null;
+  return getJSON(CB + "/exchange-rates?currency=USD").then(function(j){
+    var r = j && j.data && j.data.rates || {};
+    if(+r.XAU > 0){ gold = 1/(+r.XAU); srcName = "spot XAU/USD"; }
+    if(+r.EUR > 0) eur = 1/(+r.EUR);
+    srcSet("cbrates", true, (gold ? "gold + " : "") + "euro rate OK");
+  }).catch(function(e){ srcSet("cbrates", false, e.message); }).then(function(){
+    if(gold) return;
+    return getJSON(CB + "/prices/PAXG-USD/spot").then(function(j){
+      var a = +(j && j.data && j.data.amount); if(a > 0){ gold = a; srcName = "PAXG (tracks spot)"; srcSet("cbpaxg", true, "OK"); }
+    }).catch(function(e){ srcSet("cbpaxg", false, e.message); });
+  }).then(function(){
+    if(gold) return;
+    return binanceLast().then(function(p){ if(p){ gold = p.gold; if(!eur && p.eur) eur = p.eur; srcName = "PAXG on Binance"; } });
+  }).then(function(){ return { gold: gold, eur: eur, src: srcName }; });
+}
+function binanceLast(){
+  function at(i){
+    if(i >= BN.length) return Promise.reject(new Error("blocked or offline"));
+    return Promise.all([getJSON(BN[i] + "/api/v3/ticker/price?symbol=PAXGUSDT"), getJSON(BN[i] + "/api/v3/ticker/price?symbol=EURUSDT")])
+      .catch(function(){ return at(i + 1); });
+  }
+  return at(0).then(function(r){ srcSet("binance", true, "OK"); return { gold: +r[0].price, eur: +r[1].price }; })
+    .catch(function(e){ srcSet("binance", false, e.message); return null; });
+}
+// One-time history so forecasts work immediately: PAXG 1-min candles, shifted onto the spot price
+function loadHistory(spot){
+  return getJSON(CBX + "/products/PAXG-USD/candles?granularity=60").then(function(c){
+    // [time, low, high, open, close, volume], newest first
+    var rows = c.slice().reverse().map(function(x){ return { t: x[0]*1000 + MIN, l: x[1], h: x[2], o: x[3], p: x[4], v: x[5] }; });
+    srcSet("cbcandles", true, rows.length + " minutes of history");
+    return rows;
+  }).catch(function(e){
+    srcSet("cbcandles", false, e.message);
+    function at(i){
+      if(i >= BN.length) return Promise.reject(e);
+      return getJSON(BN[i] + "/api/v3/klines?symbol=PAXGUSDT&interval=1m&limit=500").catch(function(){ return at(i + 1); });
+    }
+    return at(0).then(function(k){ return k.map(function(c){ return { t: c[6] + 1, o: +c[1], h: +c[2], l: +c[3], p: +c[4], v: +c[5] }; }); }).catch(function(){ return []; });
+  }).then(function(rows){
+    rows = rows.filter(function(r){ return r.t <= minuteEnd(Date.now()) - MIN; });
+    if(!rows.length || !spot) return;
+    var basis = rows[rows.length-1].p - spot; // PAXG premium/discount vs spot
+    if(Math.abs(basis) > 80) basis = 0;
+    rows.forEach(function(r){ ["o","h","l","p"].forEach(function(k){ r[k] = +(r[k] - basis).toFixed(2); }); });
+    var cutoff = S.ticks.length ? S.ticks[0].t : Infinity;
+    S.ticks = rows.filter(function(r){ return r.t < cutoff; }).concat(S.ticks);
+    S.d24 = null;
+    if(rows.length > 60){
+      var first = rows[0];
+      S.d24 = { chg: S.ticks[S.ticks.length-1].p - first.o, pct: (S.ticks[S.ticks.length-1].p/first.o - 1)*100, span: Math.round((Date.now() - first.t)/3600000) };
+    }
+  });
+}
+// Real trades + order book on the PAXG market (Coinbase)
+function fetchFlow(){
+  getJSON(CBX + "/products/PAXG-USD/trades?limit=1000").then(function(tr){
+    // Coinbase "side" is the maker's side: maker "sell" = an aggressive buyer
+    S.trades = tr.map(function(x){ return { t: Date.parse(x.time), size: +x.size, buy: x.side === "sell" }; });
+    srcSet("cbtrades", true, tr.length + " recent trades");
+    renderFlow();
+  }).catch(function(e){ srcSet("cbtrades", false, e.message); renderFlow(); });
+  getJSON(CBX + "/products/PAXG-USD/book?level=2").then(function(d){
+    var mid = d.bids[0] && d.asks[0] ? (+d.bids[0][0] + +d.asks[0][0])/2 : null; if(!mid) return;
+    var band = mid*0.005, bid = 0, ask = 0;
+    d.bids.forEach(function(b){ if(+b[0] >= mid - band) bid += +b[1]; });
+    d.asks.forEach(function(a){ if(+a[0] <= mid + band) ask += +a[1]; });
+    S.book = { bid: bid, ask: ask, spread: +d.asks[0][0] - +d.bids[0][0], at: Date.now() };
+    srcSet("cbbook", true, "OK");
+    renderBook();
+  }).catch(function(e){ srcSet("cbbook", false, e.message); renderBook(); });
+}
+var historyTried = false;
+function fetchPrices(){
+  return fetchSpot().then(function(r){
+    if(!r.gold){
+      setStatus("err", "No price feed");
+      warn("None of the free price feeds could be reached from this device. See \"Data sources\" at the bottom. If you're viewing this inside the Claude app, open the link in Safari or Chrome instead.");
+      return;
+    }
+    var t = minuteEnd(Date.now());
+    upsert(S.ticks, { t: t, o: r.gold, h: r.gold, l: r.gold, p: +r.gold.toFixed(2), v: 0, tb: 0, n: 0 });
+    if(r.eur) upsert(S.eur, { t: t, o: r.eur, h: r.eur, l: r.eur, p: r.eur });
+    S.goldSrc = r.src; S.lastOk = Date.now();
+    warn(null); setStatus("live", "Live · 1-min refresh");
+    var p = historyTried ? Promise.resolve() : (historyTried = true, loadHistory(r.gold));
+    return p.then(function(){
+      renderPrice(); renderDrivers(); evaluate(); maybeForecast(); renderChart(); renderPredChart();
+    });
+  });
+}
+function fetchBook(){ fetchFlow(); }
+var SRCNAMES = { cbrates: "Coinbase spot rates (gold, euro)", cbpaxg: "Coinbase PAXG price", binance: "Binance (backup)", cbcandles: "Coinbase price history", cbtrades: "Coinbase trades", cbbook: "Coinbase order book", gdelt: "GDELT news" };
+function renderSources(){
+  var box = document.getElementById("sources"); if(!box) return; clear(box);
+  Object.keys(SRCNAMES).forEach(function(k){
+    var s = SRC[k]; if(!s) return;
+    box.appendChild(el("div",{cls:"tiny",style:"padding:2px 0"},[ el("span",{cls: s.ok ? "up" : "dn", text: s.ok ? "✓ " : "✗ "}), document.createTextNode(SRCNAMES[k] + " — " + s.msg) ]));
+  });
+}
+
+// ---------- news: GDELT (free) ----------
+var BULL = [/rate cuts?/i,/dovish/i,/(dollar|greenback|usd|dxy)\s+(falls?|slips?|weakens?|drops?|declines?|retreats?|eases?|pulls? back|slides?|tumbles?)/i,/weak(er)? (dollar|us data|jobs)/i,/safe[- ]haven/i,/geopolitic/i,/\b(war|strikes?|attack|missiles?|escalat\w*|tensions?|conflict|sanctions)\b/i,/central banks? (buy|add|purchas)/i,/recession/i,/gold (rises?|gains?|climbs?|rallies|rally|jumps?|surges?|rebounds?|recovers?|higher|soars?)/i,/record high/i,/yields? (fall|drop|slip|ease|decline)/i,/(soft|cool)(er)? (cpi|inflation|data)/i];
+var BEAR = [/rate hikes?/i,/hawkish/i,/(dollar|greenback|usd|dxy)\s+(rises?|climbs?|gains?|strengthens?|jumps?|rall\w+|firms?|surges?|high)/i,/strong(er)? (dollar|us data|jobs|cpi)/i,/gold (falls?|slips?|drops?|tumbles?|declines?|slides?|sinks?|lower|plunges?|retreats?|slumps?)/i,/yields? (rise|climb|jump|rally|surge|higher)/i,/(hot|hotter|beats?)\w* (cpi|inflation)/i,/risk[- ]on/i,/ceasefire|peace (talks|deal)|de-?escalat/i];
+var RELEVANT = /gold|bullion|xau|fed\b|federal reserve|dollar|treasur|yield|inflation|cpi|powell|rate (hike|cut)/i;
+function lexScore(text){ var s = 0; BULL.forEach(function(r){ if(r.test(text)) s += 1; }); BEAR.forEach(function(r){ if(r.test(text)) s -= 1; }); return clamp(s/2, -1, 1); }
+function fetchNews(){
+  var q = '("gold price" OR "gold prices" OR bullion OR "spot gold" OR XAU OR "Federal Reserve" OR "dollar index" OR "Treasury yields") sourcelang:english';
+  var url = "https://api.gdeltproject.org/api/v2/doc/doc?query=" + encodeURIComponent(q) + "&mode=artlist&maxrecords=60&format=json&sort=datedesc&timespan=6h";
+  fetch(url, { cache: "no-store" }).then(function(r){ return r.text(); }).then(function(txt){
+    var j; try{ j = JSON.parse(txt); }catch(e){ throw new Error(txt.slice(0, 80) || "bad response"); }
+    var seen = {}, list = [];
+    (j.articles || []).forEach(function(a){
+      var title = (a.title || "").replace(/\s+/g, " ").trim();
+      var key = title.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().slice(0, 70);
+      if(!title || seen[key] || !RELEVANT.test(title)) return; seen[key] = 1;
+      var m = (a.seendate || "").match(/(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)Z/);
+      var t = m ? Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5], +m[6]) : Date.now();
+      list.push({ headline: title, src: a.domain, url: a.url, t: t, score: lexScore(title) });
+    });
+    list.sort(function(a,b){ return b.t - a.t; });
+    S.news = list.slice(0, 25); S.newsAt = Date.now(); srcSet("gdelt", true, list.length + " headlines");
+    renderNews();
+  }).catch(function(e){
+    srcSet("gdelt", false, (e && e.message || "error").slice(0, 60));
+    if(!S.news.length){ var ul = $("news"); clear(ul); ul.appendChild(el("li",{cls:"small mut",text:"News feed (GDELT) didn't respond — it retries in 10 minutes. (" + (e && e.message || "error") + ")"})); }
+  });
+}
+function newsScore(){
+  var now = Date.now(), n = 0, d = 0;
+  S.news.forEach(function(x){ var age = (now - x.t)/MIN; if(age > 240 || age < -5) return; var w = Math.exp(-age/90); n += w*x.score; d += w; });
+  return d > 0.05 ? clamp(n/d, -1, 1) : null;
+}
+
+// ---------- series ----------
+function priceAt(t){ var p = null; for(var i = 0; i < S.ticks.length; i++){ if(S.ticks[i].t <= t) p = S.ticks[i]; else break; } return p; }
+function lastN(arr, mins){ var c = Date.now() - mins*MIN; return arr.filter(function(x){ return x.t > c; }); }
+function ema(a, n){ var k = 2/(n+1), e = a[0]; for(var i = 1; i < a.length; i++) e = a[i]*k + e*(1-k); return e; }
+function sigma1m(){
+  var tk = lastN(S.ticks, 240), s = 0, n = 0;
+  for(var i = 1; i < tk.length; i++){ var dt = (tk[i].t - tk[i-1].t)/MIN; if(dt <= 0 || dt > 15) continue; var r = Math.log(tk[i].p/tk[i-1].p); s += r*r/dt; n++; }
+  var prior = 0.012/Math.sqrt(1380);
+  if(n < 20) return prior;
+  return clamp(Math.sqrt(s/n), prior*0.4, prior*4);
+}
+function flowStats(mins){
+  var c = Date.now() - mins*MIN, tr = (S.trades || []).filter(function(x){ return x.t > c; });
+  if(!tr.length) return null;
+  var v = 0, b = 0; tr.forEach(function(x){ v += x.size; if(x.buy) b += x.size; });
+  return { buy: v > 0 ? b/v : 0.5, vol: v, trades: tr.length };
+}
+function usdChange(mins){ // % change of the dollar vs euro over N minutes (positive = stronger USD)
+  var e = S.eur; if(e.length < 2) return null;
+  var now = e[e.length-1], target = now.t - mins*MIN, past = null;
+  for(var i = e.length-1; i >= 0; i--){ if(e[i].t <= target){ past = e[i]; break; } }
+  if(!past || now.t - past.t > (mins + 10)*MIN) return null;
+  return -(now.p/past.p - 1)*100;
+}
+
+// ---------- forecast engine ----------
+function computeForecast(){
+  var last = S.ticks[S.ticks.length-1]; if(!last) return null;
+  var P = last.p, s1 = sigma1m(), comps = [];
+  var g = lastN(S.ticks, 30).map(function(x){ return x.p; });
+  if(g.length >= 15){
+    var e5 = ema(g, 5), e20 = ema(g, 20);
+    var mz = (e5 - e20)/(P*s1*Math.sqrt(8));
+    var p15 = g[Math.max(0, g.length-16)], rz = Math.log(P/p15)/(s1*Math.sqrt(15));
+    var mom = tanh(0.7*mz); if(Math.abs(rz) > 2.5) mom -= 0.25*Math.sign(rz);
+    comps.push({ k: "Momentum", v: clamp(mom,-1,1), w: 0.35, note: "15m move " + sgn(P - p15, 2) });
+  }
+  var dU = usdChange(15);
+  if(dU != null) comps.push({ k: "US dollar", v: clamp(tanh(-dU/0.05),-1,1), w: 0.25, note: "USD " + sgn(dU, 3) + "% in 15m" });
+  var fl = flowStats(15);
+  if(fl && fl.vol > 0) comps.push({ k: "Order flow", v: clamp(tanh((fl.buy - 0.5)/0.12),-1,1), w: 0.15, note: Math.round(fl.buy*100) + "% buy volume, 15m" });
+  if(S.book && Date.now() - S.book.at < 3*MIN && S.book.bid + S.book.ask > 0){
+    var imb = (S.book.bid - S.book.ask)/(S.book.bid + S.book.ask);
+    comps.push({ k: "Order book", v: clamp(tanh(imb/0.4)*0.8,-1,1), w: 0.1, note: Math.round(S.book.bid/(S.book.bid+S.book.ask)*100) + "% resting bids" });
+  }
+  var ns = newsScore();
+  if(ns != null) comps.push({ k: "News tone", v: ns, w: 0.15, note: S.news.length + " headlines, last 6h" });
+  var W = 0, X = 0; comps.forEach(function(c){ W += c.w; X += c.w*c.v; });
+  var s = W ? X/W : 0; s *= (0.5 + 0.5*Math.min(1, W/0.8));
+  var EDGE = 0.4, path = [];
+  for(var h = 0; h <= 30; h++){
+    var sd = s1*Math.sqrt(Math.max(h, 0.0001))*P, m = P + (h ? s*EDGE*sd : 0);
+    path.push({ m: m, l1: m - sd, u1: m + sd, sd: sd });
+  }
+  return { t0: Date.now(), p0: P, s: s, sig: s1, comps: comps, path: path, t5: path[5].m, t15: path[15].m, t30: path[30].m, pu: Phi(s*EDGE), stale: Date.now() - S.lastOk > 4*MIN };
+}
+function maybeForecast(){
+  if(!S.ticks.length) return;
+  var slot = Math.floor(Date.now()/(5*MIN));
+  if(slot !== S.lastSlot || !S.cur){
+    S.lastSlot = slot;
+    S.cur = computeForecast();
+    if(S.cur){
+      S.forecasts.push({ t0: S.cur.t0, p0: S.cur.p0, t5: S.cur.t5, t15: S.cur.t15, t30: S.cur.t30, s: S.cur.s });
+      if(S.forecasts.length > 400) S.forecasts = S.forecasts.slice(-400);
+      LS.set("xauf_fc", S.forecasts);
+      recordSignal(computeSignal(S.cur));
+      renderForecast(); renderSignal();
+    }
+  }
+}
+function evaluate(){
+  evalSignals();
+  var last = S.ticks[S.ticks.length-1]; if(!last) return;
+  var changed = false;
+  S.forecasts.forEach(function(f){
+    [5, 15, 30].forEach(function(h){
+      var key = "e" + h; if(f[key]) return;
+      var tt = f.t0 + h*MIN; if(last.t < tt) return;
+      var a = priceAt(tt); if(!a) return;
+      var mv = a.p - f.p0, pm = f["t" + h] - f.p0;
+      f[key] = { act: a.p, err: Math.abs(a.p - f["t" + h]), naive: Math.abs(a.p - f.p0), hit: Math.abs(mv) < 0.05 || Math.abs(pm) < 0.05 ? null : (mv > 0) === (pm > 0) };
+      changed = true;
+    });
+  });
+  if(changed){ LS.set("xauf_fc", S.forecasts); renderTrack(); renderPredChart(); }
+}
+
+// ---------- trade signal (BUY / SELL / WAIT) ----------
+S.signals = LS.get("xauf_sig", []).filter(function(x){ return x && x.t0 > Date.now() - 48*60*MIN; });
+function computeSignal(f){
+  var P = f.p0, sd15 = f.path[15].sd, sd30 = f.path[30].sd, lv = levels(P);
+  var fl = flowStats(15) || flowStats(60);
+  var flowB = fl && fl.vol ? fl.buy : 0.5;
+  var res = lv.filter(function(l){ return l.v > P + 0.3; }).sort(function(a,b){ return a.v-b.v; })[0];
+  var sup = lv.filter(function(l){ return l.v < P - 0.3; }).sort(function(a,b){ return b.v-a.v; })[0];
+  var sig = { t0: f.t0, p0: P, side: "WAIT", strength: Math.round(Math.abs(f.s)*100), reasons: [] };
+  var top = f.comps.slice().sort(function(a,b){ return Math.abs(b.v*b.w) - Math.abs(a.v*a.w); }).slice(0, 2);
+  var buyOk = f.s >= 0.22 && f.pu >= 0.54 && flowB > 0.4;
+  var sellOk = f.s <= -0.22 && f.pu <= 0.46 && flowB < 0.6;
+  if(f.stale) buyOk = sellOk = false;
+  if(buyOk || sellOk){
+    var dir = buyOk ? 1 : -1;
+    var strong = Math.abs(f.s) >= 0.45;
+    // entry: strong signal = at market; otherwise wait for a small pullback (or the nearest level if it's close)
+    var pull = strong ? 0 : 0.5*sd15;
+    var lvl = dir > 0 ? sup : res;
+    var entry = P - dir*pull;
+    if(!strong && lvl && Math.abs(lvl.v - P) < 1.0*sd15) entry = lvl.v + dir*0.1*sd15;
+    var stop = entry - dir*1.2*sd30;
+    if(lvl){ var cand = lvl.v - dir*0.4*sd15, gap = dir*(entry - cand); if(gap > 0.6*sd30 && gap < 1.8*sd30) stop = cand; } // tuck the stop just beyond the level
+    var risk = Math.abs(entry - stop);
+    sig.side = dir > 0 ? "BUY" : "SELL";
+    sig.entry = +entry.toFixed(2); sig.stop = +stop.toFixed(2);
+    sig.tp1 = +(entry + dir*1.0*risk).toFixed(2); sig.tp2 = +(entry + dir*1.8*risk).toFixed(2);
+    sig.atMarket = strong || Math.abs(entry - P) < 0.15*sd15;
+    var dist = Math.abs(entry - P);
+    sig.fillProb = sig.atMarket ? 1 : clamp(2*(1 - Phi(dist/sd15)), 0, 1);
+    sig.validUntil = f.t0 + 30*MIN;
+    sig.reasons = top.filter(function(c){ return Math.sign(c.v) === dir; }).map(function(c){ return c.k.toLowerCase() + " (" + c.note + ")"; });
+  } else {
+    sig.buyAbove = res ? res.v : P + sd15;
+    sig.sellBelow = sup ? sup.v : P - sd15;
+    sig.why = f.stale ? "prices aren't updating" : Math.abs(f.s) < 0.22 ? "signals are mixed, so there is no clear edge" : "order flow disagrees with the forecast";
+  }
+  return sig;
+}
+function recordSignal(sig){
+  var last = S.signals[S.signals.length-1];
+  var active = last && !last.result && last.side !== "WAIT";
+  if(sig.side === "WAIT"){ S.cur.sig = sig; return; }
+  if(active && last.side === sig.side){ S.cur.sig = last; return; } // keep the running signal instead of spamming new ones
+  if(active && last.side !== sig.side){ closeSignal(last, "reversed", S.ticks[S.ticks.length-1].p); }
+  S.signals.push(sig); if(S.signals.length > 200) S.signals = S.signals.slice(-200);
+  LS.set("xauf_sig", S.signals); S.cur.sig = sig;
+}
+function closeSignal(x, why, price){
+  var dir = x.side === "BUY" ? 1 : -1;
+  x.result = why; x.closedAt = Date.now();
+  x.pnl = x.filled ? +(dir*(price - x.entry)).toFixed(2) : 0;
+}
+function evalSignals(){
+  var changed = false;
+  S.signals.forEach(function(x){
+    if(x.result || x.side === "WAIT") return;
+    var dir = x.side === "BUY" ? 1 : -1;
+    S.ticks.forEach(function(k){
+      if(x.result || k.t <= x.t0) return;
+      var hi = k.h != null ? k.h : k.p, lo = k.l != null ? k.l : k.p;
+      if(!x.filled){
+        if(k.t > x.t0 + 15*MIN){ closeSignal(x, "missed", k.p); changed = true; return; }
+        if((dir > 0 && lo <= x.entry) || (dir < 0 && hi >= x.entry) || x.atMarket){ x.filled = true; x.filledAt = k.t; changed = true; }
+        else return;
+      }
+      var hitStop = dir > 0 ? lo <= x.stop : hi >= x.stop;
+      var hitTp = dir > 0 ? hi >= x.tp1 : lo <= x.tp1;
+      if(hitStop){ closeSignal(x, "stop", x.stop); changed = true; }
+      else if(hitTp){ closeSignal(x, "target", x.tp1); changed = true; }
+      else if(k.t > x.t0 + 60*MIN){ closeSignal(x, "expired", k.p); changed = true; }
+    });
+  });
+  if(changed){ LS.set("xauf_sig", S.signals); renderSignal(); }
+}
+function renderSignal(){
+  var box = $("signalbox"); if(!box) return; clear(box);
+  var f = S.cur, sig = f && f.sig;
+  if(!sig){ box.appendChild(el("div",{cls:"small skel",text:"The first signal appears with the first forecast."})); return; }
+  var P = S.ticks.length ? S.ticks[S.ticks.length-1].p : sig.p0;
+  var col = sig.side === "BUY" ? "up" : sig.side === "SELL" ? "dn" : "mut";
+  var badge = el("div",{cls:"sigbadge " + (sig.side === "BUY" ? "b" : sig.side === "SELL" ? "s" : "w"), text: sig.side});
+  var headTxt;
+  if(sig.side === "WAIT"){
+    headTxt = "No good entry right now — " + sig.why + ".";
+  } else if(sig.result){
+    headTxt = sig.side + " signal from " + hhmm(sig.t0) + " finished: " + ({target:"target hit ✓", stop:"stopped out ✗", missed:"price never reached the entry", expired:"expired", reversed:"reversed"})[sig.result];
+  } else if(sig.atMarket || sig.filled){
+    headTxt = (sig.side === "BUY" ? "Good point to buy now" : "Good point to sell now") + " (around $" + fmt(sig.entry,2) + ").";
+  } else {
+    headTxt = (sig.side === "BUY" ? "Buy on a dip to $" : "Sell on a bounce to $") + fmt(sig.entry,2) + " — " + Math.round(sig.fillProb*100) + "% chance price gets there in the next 15 min.";
+  }
+  box.appendChild(el("div",{cls:"sighead"},[ badge, el("div",{},[ el("div",{cls:"headline",style:"margin:0",text: headTxt}), el("div",{cls:"tiny mut",text: sig.side === "WAIT" ? "Updated " + hhmm(sig.t0) + " · checks again every 5 minutes" : "Signal strength " + sig.strength + "% · issued " + hhmm(sig.t0) + (sig.result ? "" : " · valid until " + hhmm(sig.validUntil))}) ]) ]));
+  if(sig.side === "WAIT"){
+    box.appendChild(el("div",{cls:"siglv"},[
+      el("div",{},[ el("div",{cls:"tiny mut",text:"Consider buying if price breaks above"}), el("div",{cls:"up",style:"font-weight:700;font-size:16px",text:"$" + fmt(sig.buyAbove,2)}) ]),
+      el("div",{},[ el("div",{cls:"tiny mut",text:"Consider selling if price breaks below"}), el("div",{cls:"dn",style:"font-weight:700;font-size:16px",text:"$" + fmt(sig.sellBelow,2)}) ])
+    ]));
+  } else {
+    var dir = sig.side === "BUY" ? 1 : -1;
+    var rows = [["Entry", sig.entry, ""], ["Stop-loss", sig.stop, "dn"], ["Target 1", sig.tp1, "up"], ["Target 2", sig.tp2, "up"]];
+    box.appendChild(el("div",{cls:"siglv4"}, rows.map(function(r){
+      return el("div",{},[ el("div",{cls:"tiny mut",text:r[0]}), el("div",{cls:r[2],style:"font-weight:700;font-size:15px;font-variant-numeric:tabular-nums",text:"$" + fmt(r[1],2)}), el("div",{cls:"tiny mut",text: r[0] === "Entry" ? "now $" + fmt(P,2) : sgn(dir*(r[1] - sig.entry),2)}) ]);
+    })));
+    var rr = Math.abs(sig.tp1 - sig.entry)/Math.abs(sig.entry - sig.stop);
+    box.appendChild(el("div",{cls:"small",style:"margin-top:8px",text:"Why: " + (sig.reasons.length ? sig.reasons.join(", ") : "overall forecast leans " + (dir > 0 ? "up" : "down")) + ". Risk $" + fmt(Math.abs(sig.entry - sig.stop),2) + " to make $" + fmt(Math.abs(sig.tp1 - sig.entry),2) + "–" + fmt(Math.abs(sig.tp2 - sig.entry),2) + " (1:" + rr.toFixed(1) + "–1:" + (rr*1.8).toFixed(1) + ")."}));
+  }
+  // scorecard
+  var done = S.signals.filter(function(x){ return x.result && x.result !== "missed"; });
+  var wins = done.filter(function(x){ return x.result === "target" || (x.pnl > 0 && x.result !== "stop"); }).length;
+  var pnl = done.reduce(function(s,x){ return s + (x.pnl || 0); }, 0);
+  var missed = S.signals.filter(function(x){ return x.result === "missed"; }).length;
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:10px;border-top:1px solid var(--line);padding-top:8px",text: done.length
+    ? "Past signals (48h, this device): " + wins + " of " + done.length + " profitable · net " + sgn(pnl,2) + " $/oz" + (missed ? " · " + missed + " never reached entry" : "")
+    : "Past signals are scored here automatically: target hit, stop hit, or closed after 60 minutes."}));
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:4px",text:"Signals come from a statistical model, not a guarantee. Always use a stop-loss and only risk what you can afford to lose."}));
+}
+
+// ---------- rendering ----------
+function renderPrice(){
+  var last = S.ticks[S.ticks.length-1]; if(!last) return;
+  $("px").textContent = fmt(last.p, 2);
+  if(S.d24){ var e = $("pxchg"); e.className = "chg " + cls(S.d24.chg); e.textContent = sgn(S.d24.chg, 2) + " (" + sgn(S.d24.pct, 2) + "%) " + S.d24.span + "h"; }
+  $("pxlabel").textContent = "Gold · USD/oz · " + (S.goldSrc || "");
+  var wk = new Date().getUTCDay(), weekend = wk === 6 || (wk === 0 && new Date().getUTCHours() < 22) || (wk === 5 && new Date().getUTCHours() >= 22);
+  $("asof").textContent = "Updated " + hhmm(S.lastOk) + " · refreshes every minute" + (weekend ? " · gold market closed for the weekend; PAXG still trades" : "");
+}
+function setChip(id, v, p0){ $(id).textContent = fmt(v, 2); var d = $(id + "d"); d.className = "d " + cls(v - p0); d.textContent = sgn(v - p0, 2); }
+function renderForecast(){
+  var f = S.cur; if(!f) return;
+  setChip("f5", f.t5, f.p0); setChip("f15", f.t15, f.p0); setChip("f30", f.t30, f.p0);
+  var b = f.s > 0.12 ? "Bullish" : f.s < -0.12 ? "Bearish" : "Neutral";
+  if(Math.abs(f.s) > 0.45) b = "Strongly " + b.toLowerCase();
+  var be = $("bias"); be.textContent = b; be.className = f.s > 0.12 ? "up" : f.s < -0.12 ? "dn" : "mut";
+  $("conf").textContent = f.stale ? "Low conviction · data not updating" : Math.abs(f.s) < 0.15 ? "Low conviction" : Math.abs(f.s) < 0.4 ? "Medium conviction" : "Higher conviction";
+  var pu = $("pup"); clear(pu); pu.appendChild(el("span",{cls: f.pu >= 0.5 ? "up" : "dn", text: Math.round(f.pu*100) + "%"})); pu.appendChild(document.createTextNode(" chance higher in 30m"));
+  $("gneedle").style.left = (50 + f.s*50) + "%";
+  var bars = $("bars"); clear(bars);
+  f.comps.forEach(function(c){
+    var fill = el("div",{cls:"fill"}), w = Math.abs(c.v)*50;
+    fill.style.width = w + "%"; fill.style.left = c.v >= 0 ? "50%" : (50 - w) + "%"; fill.style.background = c.v >= 0 ? "var(--up)" : "var(--dn)";
+    bars.appendChild(el("div",{cls:"b"},[ el("div",{},[el("div",{text:c.k}), el("div",{cls:"tiny mut",text:c.note})]), el("div",{cls:"track"},[fill]), el("div",{cls: cls(c.v), text: sgn(c.v, 2), style:"text-align:right"}) ]));
+  });
+  $("ftime").textContent = "Forecast made " + hhmm(f.t0) + " from " + fmt(f.p0,2) + " · next one in 5 minutes";
+  renderReaction(); renderChart();
+}
+function levels(P){
+  var step = 25, below = Math.floor(P/step)*step, above = Math.ceil(P/step)*step; if(above === below) above += step;
+  var lv = [{ n: "Round", v: below - step }, { n: "Round", v: below }, { n: "Round", v: above }, { n: "Round", v: above + step }];
+  var all = lastN(S.ticks, 600); if(all.length > 60){ lv.push({ n: "Session high", v: Math.max.apply(null, all.map(function(x){ return x.h; })) }, { n: "Session low", v: Math.min.apply(null, all.map(function(x){ return x.l; })) }); }
+  var h1 = lastN(S.ticks, 60); if(h1.length > 5){ lv.push({ n: "1h high", v: Math.max.apply(null, h1.map(function(x){ return x.h; })) }, { n: "1h low", v: Math.min.apply(null, h1.map(function(x){ return x.l; })) }); }
+  return lv;
+}
+function renderReaction(){
+  var f = S.cur; if(!f) return;
+  var P = f.p0, p30 = f.path[30], p15 = f.path[15], lv = levels(P);
+  var res = lv.filter(function(l){ return l.v > P + 0.5; }).sort(function(a,b){ return a.v-b.v; })[0];
+  var sup = lv.filter(function(l){ return l.v < P - 0.5; }).sort(function(a,b){ return b.v-a.v; })[0];
+  var dir = f.s > 0.12 ? "higher" : f.s < -0.12 ? "lower" : "sideways";
+  var txt = "Most likely: drift " + dir + " toward " + fmt(p15.m,2) + " in 15 min and " + fmt(p30.m,2) + " in 30 min, with a typical swing of ±$" + fmt(p15.sd,2) + " (15m) / ±$" + fmt(p30.sd,2) + " (30m). ";
+  if(res) txt += "A clean break above " + fmt(res.v,2) + " (" + res.n.toLowerCase() + ") would likely bring in buyers; ";
+  if(sup) txt += "losing " + fmt(sup.v,2) + " (" + sup.n.toLowerCase() + ") would likely speed up selling.";
+  $("reacttxt").textContent = txt;
+  var sd = p30.sd, mu = p30.m, pB = 1 - Phi((P + sd - mu)/sd), pR = Phi((P - sd - mu)/sd);
+  var sc = $("scen"); clear(sc);
+  [["Bull case", p30.u1, pB, "If: dollar weakens, buyers step in or risk-off headlines hit", "up"],
+   ["Base case", p30.m, 1 - pB - pR, "Range " + fmt(p15.l1,0) + "–" + fmt(p15.u1,0) + " over 15m", "goldc"],
+   ["Bear case", p30.l1, pR, "If: dollar strengthens, yields rise or hawkish Fed talk", "dn"]].forEach(function(x){
+    sc.appendChild(el("div",{cls:"sc"},[ el("div",{cls:"t " + x[4], text: x[0] + " · " + Math.round(x[2]*100) + "%"}), el("div",{cls:"p", text: fmt(x[1],2)}), el("div",{cls:"tiny mut", text: x[3]}) ]));
+  });
+  var L = $("levels"); clear(L);
+  lv.sort(function(a,b){ return b.v-a.v; }).forEach(function(l){ var e = el("span",{cls:"lv", text: l.n + " " + fmt(l.v, 2)}); e.style.color = l.v > P ? "var(--up)" : "var(--dn)"; L.appendChild(e); });
+}
+function lsBar(pct, a, b){
+  var l = el("div",{cls:"l",text: a + " " + Math.round(pct) + "%"}), s = el("div",{cls:"s",text: b + " " + Math.round(100 - pct) + "%"});
+  l.style.width = clamp(pct, 10, 90) + "%"; s.style.width = clamp(100 - pct, 10, 90) + "%";
+  return el("div",{cls:"lsbar"},[l, s]);
+}
+function renderFlow(){
+  var box = $("flow"); clear(box);
+  var f15 = flowStats(15), f60 = flowStats(60), win = "15 min";
+  if(!f15 || !f15.vol){ f15 = f60; win = "hour"; f60 = null; }
+  if(!f15 || !f15.vol){ box.appendChild(el("div",{cls:"small skel",text: SRC.cbtrades && !SRC.cbtrades.ok ? "Trade data isn't reachable on this network." : "No trades in the last hour — the market is quiet."})); return; }
+  box.appendChild(lsBar(f15.buy*100, "Buyers", "Sellers"));
+  var v = f15.buy > 0.58 ? ["up","Buyers are more aggressive"] : f15.buy < 0.42 ? ["dn","Sellers are more aggressive"] : ["mut","Buyers and sellers are balanced"];
+  box.appendChild(el("div",{cls:"small",style:"margin-top:6px"},[ el("b",{cls:v[0],text:v[1]}), document.createTextNode(" over the last " + win + " · " + fmt(f15.trades,0) + " trades" + (f60 ? " · last hour " + Math.round(f60.buy*100) + "% buying" : "")) ]));
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:3px",text:"Share of traded volume where the buyer crossed the spread (market buys) vs market sells."}));
+}
+function renderBook(){
+  var box = $("book"); clear(box); var b = S.book;
+  if(!b){ if(SRC.cbbook && !SRC.cbbook.ok) box.appendChild(el("div",{cls:"small skel",text:"Order book isn't reachable on this network."})); return; }
+  var tot = b.bid + b.ask; if(!tot){ box.appendChild(el("div",{cls:"small mut",text:"Order book is thin right now."})); return; }
+  var pct = b.bid/tot*100;
+  box.appendChild(lsBar(pct, "Buy orders", "Sell orders"));
+  var v = pct > 58 ? ["up","More buy orders waiting below the price"] : pct < 42 ? ["dn","More sell orders waiting above the price"] : ["mut","Waiting orders are balanced"];
+  box.appendChild(el("div",{cls:"small",style:"margin-top:6px"},[ el("b",{cls:v[0],text:v[1]}), document.createTextNode(" (within ±0.5% of price" + (b.spread != null ? ", spread $" + fmt(b.spread,2) : "") + ")") ]));
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:3px",text:"Buy walls can act as support and sell walls as resistance, but orders can be pulled at any time."}));
+}
+function dv(k, v, effect, eff){ return el("div",{cls:"dv"},[ el("div",{cls:"k",text:k}), el("div",{cls:"v",text:v}), el("div",{cls:"e " + (eff > 0 ? "up" : eff < 0 ? "dn" : "mut"), text: effect}) ]); }
+function renderDrivers(){
+  var d = $("drv"); clear(d);
+  var lab = function(e){ return e > 0 ? "▲ supportive for gold" : e < 0 ? "▼ weighs on gold" : "• neutral"; };
+  var u15 = usdChange(15), u60 = usdChange(60);
+  if(u15 != null){ var e1 = -Math.sign(Math.round(u15*1000)); d.appendChild(dv("US dollar (15 min)", sgn(u15,3) + "%", lab(e1), e1)); }
+  if(u60 != null){ var e2 = -Math.sign(Math.round(u60*1000)); d.appendChild(dv("US dollar (1 hour)", sgn(u60,3) + "%", lab(e2), e2)); }
+  if(S.eur24){ var e3 = Math.sign(S.eur24.pct); d.appendChild(dv("EUR/USD (24h)", fmt(S.eur24.p,4) + " (" + sgn(S.eur24.pct,2) + "%)", lab(e3), e3)); }
+  if(S.d24){ var e4 = Math.sign(S.d24.pct); d.appendChild(dv("Gold last " + S.d24.span + "h", sgn(S.d24.pct,2) + "%", e4 > 0 ? "▲ uptrend today" : e4 < 0 ? "▼ downtrend today" : "• flat", e4)); }
+  var s = sigma1m()*Math.sqrt(30)*(S.ticks.length ? S.ticks[S.ticks.length-1].p : 0);
+  d.appendChild(dv("Volatility (30m swing)", "±$" + fmt(s,2), s > 8 ? "▲ choppy — wider ranges" : "• calm", 0));
+  var ns = newsScore(); if(ns != null){ var e5 = ns > 0.1 ? 1 : ns < -0.1 ? -1 : 0; d.appendChild(dv("News tone (6h)", sgn(ns,2), lab(e5), e5)); }
+}
+function renderNews(){
+  var ul = $("news"); clear(ul);
+  if(!S.news.length) ul.appendChild(el("li",{cls:"small mut",text:"No gold/USD headlines in the last 6 hours."}));
+  S.news.forEach(function(n){
+    var t = n.score > 0.15 ? ["bull","Bullish"] : n.score < -0.15 ? ["bear","Bearish"] : ["neu","Neutral"];
+    ul.appendChild(el("li",{},[ el("div",{},[ el("span",{cls:"tag " + t[0], text: t[1]}), el("a",{href: n.url, target:"_blank", rel:"noopener", text: n.headline}) ]), el("div",{cls:"tiny mut", text: (n.src || "") + " · " + ago(n.t)}) ]));
+  });
+  $("newsmeta").textContent = S.newsAt ? "Updated " + hhmm(S.newsAt) : "";
+  var ns = newsScore(), s = $("newssent"); clear(s);
+  if(ns != null){ s.appendChild(document.createTextNode("Overall tone for gold: ")); s.appendChild(el("b",{cls: cls(ns), text: (ns > 0.15 ? "Bullish " : ns < -0.15 ? "Bearish " : "Mixed ") + "(" + sgn(ns,2) + ")"})); s.appendChild(el("span",{cls:"tiny mut",text:" · keyword-rated"})); }
+  renderDrivers();
+}
+function renderTrack(){
+  var box = $("track"); clear(box);
+  var d15 = S.forecasts.filter(function(f){ return f.e15; });
+  if(!d15.length){ box.appendChild(el("span",{cls:"skel",text:"Each forecast is scored automatically once its targets pass. First results appear 5–15 minutes after the first forecast."})); return; }
+  function st(k){ var arr = S.forecasts.filter(function(f){ return f[k]; }); if(!arr.length) return null; var h = arr.filter(function(f){ return f[k].hit !== null; });
+    return { n: arr.length, hr: h.length ? h.filter(function(f){ return f[k].hit; }).length/h.length : null, nh: h.length, mae: arr.reduce(function(s,f){ return s + f[k].err; },0)/arr.length, nv: arr.reduce(function(s,f){ return s + f[k].naive; },0)/arr.length }; }
+  var tb = el("table",{cls:"tr"});
+  tb.appendChild(el("tr",{},[el("th",{text:"Horizon"}),el("th",{text:"Calls"}),el("th",{text:"Direction right"}),el("th",{text:"Avg miss"}),el("th",{text:"\"No change\" miss"})]));
+  [["5 min","e5"],["15 min","e15"],["30 min","e30"]].forEach(function(r){
+    var s = st(r[1]);
+    tb.appendChild(el("tr",{},[ el("td",{text:r[0]}), el("td",{text: s ? String(s.n) : "—"}), el("td",{cls: s && s.hr != null ? (s.hr >= 0.5 ? "up" : "dn") : "", text: s && s.hr != null ? Math.round(s.hr*100) + "% (" + s.nh + ")" : "—"}), el("td",{text: s ? "$" + fmt(s.mae,2) : "—"}), el("td",{cls:"mut",text: s ? "$" + fmt(s.nv,2) : "—"}) ]));
+  });
+  box.appendChild(tb);
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:6px",text:"The model only adds value if its average miss is below the \"no change\" miss and it's right more than 50% of the time over many calls."}));
+}
+
+// ---------- charts ----------
+var NS = "http://www.w3.org/2000/svg";
+function sv(tag, a){ var e = document.createElementNS(NS, tag); for(var k in a) e.setAttribute(k, a[k]); return e; }
+function stepPath(act, t0, now, X, Y){
+  var pts = [];
+  act.forEach(function(x, i){ var tx = clamp(x.t, t0, now); if(i) pts.push([tx, act[i-1].p]); pts.push([tx, x.p]); });
+  pts.push([now, act[act.length-1].p]);
+  return "M" + pts.map(function(p){ return X(p[0]).toFixed(1) + "," + Y(p[1]).toFixed(1); }).join("L");
+}
+var cG = null;
+function renderChart(){
+  var svg = $("chart"), W = svg.clientWidth || 600, H = 240;
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var now = Date.now(), t0 = now - 30*MIN, t1 = now + 31*MIN;
+  var act = S.ticks.filter(function(x){ return x.t >= t0 - 2*MIN; }), f = S.cur;
+  var fp = f ? f.path.map(function(p, i){ return { t: now + i*MIN, m: p.m, l: p.l1, u: p.u1 }; }) : [];
+  var vals = act.map(function(x){ return x.p; }); fp.forEach(function(p){ vals.push(p.l, p.u); });
+  var sg = f && f.sig && f.sig.side !== "WAIT" && !f.sig.result ? f.sig : null;
+  if(sg) vals.push(sg.entry, sg.stop, sg.tp1);
+  if(f){
+    var hd = $("chead"); clear(hd);
+    var up = f.s > 0.12, dn = f.s < -0.12, col = up ? "var(--up)" : dn ? "var(--dn)" : "var(--mut)";
+    $("lgfc").style.background = col;
+    if(up || dn){ hd.appendChild(document.createTextNode("Gold is expected to go ")); hd.appendChild(el("span",{cls: up ? "up" : "dn", text: up ? "UP ▲" : "DOWN ▼"})); hd.appendChild(document.createTextNode(" to about $" + fmt(f.t30,2) + " in 30 minutes.")); }
+    else { hd.appendChild(document.createTextNode("Gold is expected to stay ")); hd.appendChild(el("span",{cls:"mut",text:"SIDEWAYS ▶"})); hd.appendChild(document.createTextNode(" around $" + fmt(f.t30,2) + " for the next 30 minutes.")); }
+    hd.appendChild(el("div",{cls:"small mut",text:"Likely range: $" + fmt(f.path[30].l1,2) + " – $" + fmt(f.path[30].u1,2) + " · " + Math.round(f.pu*100) + "% chance it ends higher"}));
+  }
+  if(!vals.length){ var t_ = sv("text",{x:W/2,y:H/2,fill:"#8b98a9","text-anchor":"middle","font-size":13}); t_.textContent = "Waiting for price data…"; svg.appendChild(t_); cG = null; return; }
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), pad = Math.max((hi - lo)*0.15, 1.5); lo -= pad; hi += pad;
+  var L = 6, R = 58, T = 18, B = 24;
+  var X = function(t){ return L + (t - t0)/(t1 - t0)*(W - L - R); }, Y = function(v){ return T + (hi - v)/(hi - lo)*(H - T - B); };
+  [0, 0.5, 1].forEach(function(k){ var v = lo + (hi - lo)*k, y = Y(v); svg.appendChild(sv("line",{x1:L,x2:W-R,y1:y,y2:y,stroke:"#1a2330"})); var tx = sv("text",{x:W-R+6,y:y+4,fill:"#6f7c8e","font-size":10}); tx.textContent = fmt(v,0); svg.appendChild(tx); });
+  var xn = X(now);
+  svg.appendChild(sv("line",{x1:xn,x2:xn,y1:T-6,y2:H-B,stroke:"#3a4556","stroke-dasharray":"3 3"}));
+  [[t0,"30 min ago","start"],[now,"Now","middle"],[now+15*MIN,"+15 min","middle"],[now+30*MIN,"+30 min","end"]].forEach(function(l){ var tx = sv("text",{x:X(l[0]),y:H-7,fill: l[1] === "Now" ? "#e6edf5" : "#8b98a9","font-size":11,"text-anchor":l[2],"font-weight": l[1] === "Now" ? 700 : 400}); tx.textContent = l[1]; svg.appendChild(tx); });
+  var a1 = sv("text",{x:L+2,y:11,fill:"#6f7c8e","font-size":10}); a1.textContent = "PAST"; svg.appendChild(a1);
+  var a2 = sv("text",{x:xn+6,y:11,fill:"#6f7c8e","font-size":10}); a2.textContent = "FORECAST"; svg.appendChild(a2);
+  if(fp.length){
+    var colr = f.s > 0.12 ? "#22c55e" : f.s < -0.12 ? "#ef4444" : "#8b98a9";
+    svg.appendChild(sv("path",{d:"M" + fp.map(function(p){ return X(p.t).toFixed(1) + "," + Y(p.u).toFixed(1); }).join("L") + "L" + fp.slice().reverse().map(function(p){ return X(p.t).toFixed(1) + "," + Y(p.l).toFixed(1); }).join("L") + "Z", fill:"rgba(139,152,169,.16)"}));
+    svg.appendChild(sv("path",{d:"M" + fp.map(function(p){ return X(p.t).toFixed(1) + "," + Y(p.m).toFixed(1); }).join("L"), fill:"none", stroke:colr,"stroke-width":3,"stroke-linecap":"round","stroke-dasharray":"7 5"}));
+    [15, 30].forEach(function(h){ var p = fp[h], x = X(p.t), y = Y(p.m); svg.appendChild(sv("circle",{cx:x,cy:y,r:5,fill:colr,stroke:"#0a0e13","stroke-width":2})); var tx = sv("text",{x: h === 30 ? x - 8 : x, y: y - 10, fill:"#e6edf5","font-size":11,"font-weight":700,"text-anchor": h === 30 ? "end" : "middle"}); tx.textContent = fmt(p.m, 2); svg.appendChild(tx); });
+  }
+  if(act.length){
+    svg.appendChild(sv("path",{d: stepPath(act, t0, now, X, Y), fill:"none", stroke:"#e8b84a","stroke-width":2.5,"stroke-linejoin":"round"}));
+    var lp = act[act.length-1].p, ly = Y(lp);
+    svg.appendChild(sv("circle",{cx:xn,cy:ly,r:5,fill:"#e8b84a",stroke:"#0a0e13","stroke-width":2}));
+    svg.appendChild(sv("rect",{x:W-R+2,y:ly-9,width:R-4,height:18,rx:4,fill:"#e8b84a"}));
+    var lt = sv("text",{x:W-R+R/2,y:ly+4,"text-anchor":"middle","font-size":10.5,"font-weight":700,fill:"#1a1405"}); lt.textContent = fmt(lp, 1); svg.appendChild(lt);
+  }
+  if(sg){
+    [[sg.entry, "#5b9dff", sg.side === "BUY" ? "Buy" : "Sell"], [sg.stop, "#ef4444", "Stop"], [sg.tp1, "#22c55e", "Target"]].forEach(function(l){
+      var y = Y(l[0]);
+      svg.appendChild(sv("line",{x1:L,x2:W-R,y1:y,y2:y,stroke:l[1],"stroke-width":1.2,"stroke-dasharray":"2 4",opacity:.9}));
+      var tx = sv("text",{x:L+4,y:y-3,fill:l[1],"font-size":10,"font-weight":700}); tx.textContent = l[2] + " " + fmt(l[0],1); svg.appendChild(tx);
+    });
+  }
+  cG = { t0: t0, t1: t1, L: L, R: R, act: act, fp: fp };
+}
+function onPointer(ev){
+  if(!cG) return;
+  var r = $("chart").getBoundingClientRect(), W = r.width, px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+  var t = cG.t0 + (px - cG.L)/(W - cG.L - cG.R)*(cG.t1 - cG.t0), tip = $("tip"), txt;
+  if(t <= Date.now()){ var a = null; cG.act.forEach(function(x){ if(x.t <= t) a = x; }); if(!a){ tip.style.display = "none"; return; } txt = hhmm(t) + " · $" + fmt(a.p, 2); }
+  else if(cG.fp.length){ var i = clamp(Math.round((t - cG.fp[0].t)/MIN), 1, 30), p = cG.fp[i]; txt = "In " + i + " min: about $" + fmt(p.m, 2) + " (likely $" + fmt(p.l, 0) + "–" + fmt(p.u, 0) + ")"; }
+  else { tip.style.display = "none"; return; }
+  tip.textContent = txt; tip.style.display = "block"; var tw = tip.offsetWidth; tip.style.left = clamp(px - tw/2, 0, W - tw) + "px"; tip.style.top = "2px";
+}
+var predH = 15, pG = null;
+function renderPredChart(){
+  var svg = $("pchart"), W = svg.clientWidth || 600, H = 200;
+  while(svg.firstChild) svg.removeChild(svg.firstChild);
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var now = Date.now(), t0 = now - 120*MIN, t1 = now + 2*MIN, key = "e" + predH, tk = "t" + predH;
+  var all = S.forecasts.filter(function(f){ return f[key]; }).map(function(f){ return { tt: f.t0 + predH*MIN, t0: f.t0, p0: f.p0, pred: f[tk], e: f[key] }; });
+  var hits = all.filter(function(f){ return f.e.hit !== null; }), right = hits.filter(function(f){ return f.e.hit; }).length;
+  var hd = $("predsum"); clear(hd);
+  if(!hits.length){ hd.appendChild(document.createTextNode("No " + predH + "-minute forecasts scored yet.")); hd.appendChild(el("div",{cls:"small mut",text:"A forecast is made every 5 minutes and checked " + predH + " minutes later."})); }
+  else {
+    var pct = Math.round(right/hits.length*100);
+    hd.appendChild(document.createTextNode("Right ")); hd.appendChild(el("span",{cls: pct >= 50 ? "up" : "dn", text: right + " of " + hits.length})); hd.appendChild(document.createTextNode(" times (" + pct + "%)"));
+    hd.appendChild(el("div",{cls:"small mut",text:"Did gold move the way the " + predH + "-minute forecast said? · Average miss: $" + fmt(all.reduce(function(s,f){ return s + f.e.err; },0)/all.length,2)}));
+  }
+  var cw = $("calls"); clear(cw);
+  all.slice(-12).reverse().forEach(function(f){ var k = f.e.hit === true ? ["ok","✓"] : f.e.hit === false ? ["no","✗"] : ["fl","–"]; cw.appendChild(el("span",{cls:"call " + k[0], text: k[1] + " " + hhmm(f.t0)})); });
+  var act = S.ticks.filter(function(x){ return x.t >= t0 - 2*MIN; }), fc = all.filter(function(f){ return f.tt >= t0; });
+  var vals = act.map(function(x){ return x.p; }).concat(fc.map(function(f){ return f.pred; }));
+  if(!vals.length){ var t_ = sv("text",{x:W/2,y:H/2,fill:"#8b98a9","text-anchor":"middle","font-size":12}); t_.textContent = "The chart fills in as forecasts are checked."; svg.appendChild(t_); pG = null; return; }
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), pad = Math.max((hi - lo)*0.12, 1.5); lo -= pad; hi += pad;
+  var L = 6, R = 52, T = 10, B = 22;
+  var X = function(t){ return L + (t - t0)/(t1 - t0)*(W - L - R); }, Y = function(v){ return T + (hi - v)/(hi - lo)*(H - T - B); };
+  [0, 0.5, 1].forEach(function(k){ var v = lo + (hi - lo)*k, y = Y(v); svg.appendChild(sv("line",{x1:L,x2:W-R,y1:y,y2:y,stroke:"#1a2330"})); var tx = sv("text",{x:W-R+6,y:y+4,fill:"#6f7c8e","font-size":10}); tx.textContent = fmt(v,0); svg.appendChild(tx); });
+  [[t0,"2h ago","start"],[now-60*MIN,"1h ago","middle"],[now,"Now","end"]].forEach(function(l){ var tx = sv("text",{x:X(l[0]),y:H-6,fill:"#8b98a9","font-size":11,"text-anchor":l[2]}); tx.textContent = l[1]; svg.appendChild(tx); });
+  if(act.length) svg.appendChild(sv("path",{d: stepPath(act, t0, now, X, Y), fill:"none", stroke:"#e8b84a","stroke-width":2.5}));
+  if(fc.length > 1) svg.appendChild(sv("path",{d:"M" + fc.map(function(f){ return X(f.tt).toFixed(1) + "," + Y(f.pred).toFixed(1); }).join("L"), fill:"none", stroke:"#5b9dff","stroke-width":2}));
+  fc.forEach(function(f){ var c = f.e.hit === true ? "#22c55e" : f.e.hit === false ? "#ef4444" : "#8b98a9"; svg.appendChild(sv("circle",{cx:X(f.tt),cy:Y(f.pred),r:4,fill:c,stroke:"#0a0e13","stroke-width":1.5})); });
+  pG = { t0: t0, t1: t1, L: L, R: R, fc: fc, act: act };
+}
+function onPredPointer(ev){
+  if(!pG) return;
+  var r = $("pchart").getBoundingClientRect(), W = r.width, px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left;
+  var t = pG.t0 + (px - pG.L)/(W - pG.L - pG.R)*(pG.t1 - pG.t0), best = null, bd = 1e15, tip = $("ptip");
+  pG.fc.forEach(function(f){ var d = Math.abs(f.tt - t); if(d < bd){ bd = d; best = f; } });
+  if(best && bd <= 4*MIN) tip.textContent = hhmm(best.tt) + " · forecast $" + fmt(best.pred,2) + " · actual $" + fmt(best.e.act,2) + " " + (best.e.hit === true ? "✓" : best.e.hit === false ? "✗" : "–");
+  else { var a = null; pG.act.forEach(function(x){ if(x.t <= t) a = x; }); if(!a || t > Date.now()){ tip.style.display = "none"; return; } tip.textContent = hhmm(t) + " · $" + fmt(a.p,2); }
+  tip.style.display = "block"; var tw = tip.offsetWidth; tip.style.left = clamp(px - tw/2, 0, W - tw) + "px"; tip.style.top = "2px";
+}
+["pointermove","pointerdown"].forEach(function(ev){ $("chart").addEventListener(ev, onPointer); $("pchart").addEventListener(ev, onPredPointer); });
+$("chart").addEventListener("pointerleave", function(){ $("tip").style.display = "none"; });
+$("pchart").addEventListener("pointerleave", function(){ $("ptip").style.display = "none"; });
+Array.prototype.forEach.call(document.querySelectorAll("#hbtns .btn"), function(b){
+  b.onclick = function(){ predH = +b.getAttribute("data-h"); Array.prototype.forEach.call(document.querySelectorAll("#hbtns .btn"), function(x){ x.className = "btn" + (x === b ? " gold" : ""); }); renderPredChart(); };
+});
+window.addEventListener("resize", function(){ renderChart(); renderPredChart(); });
+
+// ---------- loop ----------
+var lastPriceSlot = -1, lastNewsAt = 0;
+function tick(){
+  var now = Date.now();
+  var slotEnd = (Math.floor(now/(5*MIN)) + 1)*5*MIN, s = Math.max(0, Math.round((slotEnd - now)/1000));
+  $("countdown").textContent = "Next forecast in " + Math.floor(s/60) + ":" + ("0" + (s%60)).slice(-2);
+  if(document.hidden) return;
+  // refresh prices once per minute, a few seconds after the minute candle closes
+  var ps = Math.floor((now - 3000)/MIN);
+  if(ps !== lastPriceSlot){ lastPriceSlot = ps; fetchPrices().then(fetchBook); }
+  if(now - lastNewsAt >= 10*MIN){ lastNewsAt = now; fetchNews(); }
+}
+setInterval(tick, 1000);
+setInterval(function(){ renderChart(); }, 15000);
+document.addEventListener("visibilitychange", function(){ if(!document.hidden){ lastPriceSlot = -1; tick(); } });
+renderTrack();
+tick();
+})();
+</script>
+</body>
+</html>
