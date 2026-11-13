@@ -73,6 +73,13 @@ h2{font-size:13px;margin:0 0 10px;color:var(--mut);text-transform:uppercase;lett
 .siglv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;background:var(--card2);border-radius:10px;padding:10px}
 .siglv4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;background:var(--card2);border-radius:10px;padding:10px}
 @media(max-width:420px){.siglv4{grid-template-columns:repeat(2,1fr)}}
+.toast{position:fixed;left:50%;top:10px;transform:translate(-50%,-140%);transition:transform .35s;z-index:50;max-width:92%;background:#1d2633;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13px;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.toast.show{transform:translate(-50%,0)}.toast.b{border-color:var(--up);color:#bbf7d0}.toast.s{border-color:var(--dn);color:#fecaca}.toast.n{border-color:#f59e0b;color:#fde68a}
+.evwarn{background:#2a1f0b;border:1px solid #6b4b12;color:#fde68a;border-radius:10px;padding:10px;font-size:13px;font-weight:600;margin-bottom:8px}
+.evrow{display:flex;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13px}.evrow:first-of-type{border-top:0}.evrow.past{opacity:.5}
+.evimp{font-size:10px;font-weight:800;padding:3px 6px;border-radius:5px}.evimp.hi{background:#7f1d1d;color:#fecaca}.evimp.md{background:#4a3a0e;color:#fde68a}
+.mt5box{margin-top:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px}
+.mt5box input{flex:1;min-width:0;background:#0b1118;border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:7px 9px;font-size:14px}
 .ptitle{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600}
 .lsbar{display:flex;height:22px;border-radius:7px;overflow:hidden;font-size:11px;font-weight:700}
 .lsbar div{display:flex;align-items:center;padding:0 8px;white-space:nowrap;transition:width .6s}
@@ -89,6 +96,7 @@ footer a{color:var(--mut)}
 </style>
 </head>
 <body>
+<div class="toast" id="toast"></div>
 <div class="app">
   <header>
     <h1><span>XAU/USD</span> Live Forecaster</h1>
@@ -112,8 +120,18 @@ footer a{color:var(--mut)}
   </section>
 
   <section class="card" id="sigcard">
-    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">Trade signal</h2><span class="tiny mut">next 30 min</span></div>
+    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">Trade signal</h2><button class="btn" id="alertbtn">🔕 Turn on alerts</button></div>
     <div id="signalbox"><div class="small skel">The first signal appears with the first forecast.</div></div>
+    <div class="mt5box">
+      <div class="tiny" style="font-weight:700;margin-bottom:4px">Match my broker (Exness MT5)</div>
+      <div style="display:flex;gap:6px"><input id="mt5in" inputmode="decimal" placeholder="Your MT5 XAUUSD bid, e.g. 3934.50"><button class="btn gold" id="mt5btn">Match</button><button class="btn" id="mt5clr">Reset</button></div>
+      <div class="tiny mut" id="mt5note" style="margin-top:4px"></div>
+    </div>
+  </section>
+
+  <section class="card" id="evcard">
+    <div class="row" style="margin-bottom:8px"><h2 style="margin:0">Big news ahead (US)</h2><span class="tiny mut">times in your timezone</span></div>
+    <div id="events"><div class="small skel">Loading economic calendar…</div></div>
   </section>
 
   <section class="card">
@@ -200,7 +218,7 @@ footer a{color:var(--mut)}
   </section>
 
   <footer>
-    100% free data, no account or key needed. Gold: spot XAU/USD from Coinbase's public exchange rates when available, otherwise PAXG (a token backed 1:1 by a London Good Delivery gold ounce that tracks spot closely), with Binance as a last backup. Dollar: euro rate from the same feed. Trades and order book: Coinbase PAXG market. News: <a href="https://www.gdeltproject.org" target="_blank" rel="noopener">GDELT</a>, scored by keywords. Prices refresh every minute; news every 10 minutes.<br>
+    100% free data, no account or key needed. Gold: spot XAU/USD from Coinbase's public exchange rates when available, otherwise PAXG (a token backed 1:1 by a London Good Delivery gold ounce that tracks spot closely), with Binance as a last backup. Dollar: euro rate from the same feed. Trades and order book: Coinbase PAXG market. News: <a href="https://www.gdeltproject.org" target="_blank" rel="noopener">GDELT</a>, scored by keywords. Prices refresh every 15 seconds; news every 10 minutes.<br>
     Forecasts are statistical estimates from momentum, dollar moves, order flow and news tone, with ranges sized from recent volatility. Short-term gold moves are mostly noise; this is a decision aid, not financial advice.
   </footer>
 </div>
@@ -260,17 +278,30 @@ function upsert(arr, pt){
   else if(!last || pt.t > last.t){ arr.push(pt); if(arr.length > 720) arr.splice(0, arr.length - 720); }
 }
 // Gold + euro spot from Coinbase public rates (CORS-enabled)
+S.basis = LS.get("xauf_basis", null);
 function fetchSpot(){
-  var gold = null, eur = null, srcName = null;
-  return getJSON(CB + "/exchange-rates?currency=USD").then(function(j){
+  var xau = null, eur = null, mid = null, gold = null, srcName = null;
+  var pRates = getJSON(CB + "/exchange-rates?currency=USD").then(function(j){
     var r = j && j.data && j.data.rates || {};
-    if(+r.XAU > 0){ gold = 1/(+r.XAU); srcName = "spot XAU/USD"; }
+    if(+r.XAU > 0) xau = 1/(+r.XAU);
     if(+r.EUR > 0) eur = 1/(+r.EUR);
-    srcSet("cbrates", true, (gold ? "gold + " : "") + "euro rate OK");
-  }).catch(function(e){ srcSet("cbrates", false, e.message); }).then(function(){
+    srcSet("cbrates", true, (xau ? "gold + " : "") + "euro rate OK");
+  }).catch(function(e){ srcSet("cbrates", false, e.message); });
+  var pTick = getJSON(CBX + "/products/PAXG-USD/ticker").then(function(t){
+    var b = +t.bid, a = +t.ask;
+    if(b > 0 && a > 0 && a - b < 30){ mid = (a + b)/2; srcSet("cbtick", true, "live bid/ask"); }
+  }).catch(function(e){ srcSet("cbtick", false, e.message); });
+  return Promise.all([pRates, pTick]).then(function(){
+    if(mid && xau){
+      // order book moves instantly; the spot rate is slower — use it only to anchor the level
+      var bNow = mid - xau;
+      if(Math.abs(bNow) < 80){ S.basis = S.basis == null ? bNow : 0.85*S.basis + 0.15*bNow; LS.set("xauf_basis", S.basis); }
+      gold = mid - (S.basis || 0); srcName = "spot XAU/USD (live)";
+    } else if(mid){ gold = mid - (S.basis || 0); srcName = S.basis != null ? "spot XAU/USD (live)" : "PAXG live (tracks spot)"; }
+    else if(xau){ gold = xau; srcName = "spot XAU/USD"; }
     if(gold) return;
     return getJSON(CB + "/prices/PAXG-USD/spot").then(function(j){
-      var a = +(j && j.data && j.data.amount); if(a > 0){ gold = a; srcName = "PAXG (tracks spot)"; srcSet("cbpaxg", true, "OK"); }
+      var am = +(j && j.data && j.data.amount); if(am > 0){ gold = am - (S.basis || 0); srcName = "PAXG (tracks spot)"; srcSet("cbpaxg", true, "OK"); }
     }).catch(function(e){ srcSet("cbpaxg", false, e.message); });
   }).then(function(){
     if(gold) return;
@@ -345,15 +376,17 @@ function fetchPrices(){
     upsert(S.ticks, { t: t, o: r.gold, h: r.gold, l: r.gold, p: +r.gold.toFixed(2), v: 0, tb: 0, n: 0 });
     if(r.eur) upsert(S.eur, { t: t, o: r.eur, h: r.eur, l: r.eur, p: r.eur });
     S.goldSrc = r.src; S.lastOk = Date.now();
-    warn(null); setStatus("live", "Live · 1-min refresh");
+    warn(null); setStatus("live", "Live · 15-sec refresh");
     var p = historyTried ? Promise.resolve() : (historyTried = true, loadHistory(r.gold));
     return p.then(function(){
-      renderPrice(); renderDrivers(); evaluate(); maybeForecast(); renderChart(); renderPredChart();
+      renderPrice(); renderDrivers(); evaluate();
+      if(!maybeForecast()) liveUpdate();
+      renderChart(); renderPredChart();
     });
   });
 }
 function fetchBook(){ fetchFlow(); }
-var SRCNAMES = { cbrates: "Coinbase spot rates (gold, euro)", cbpaxg: "Coinbase PAXG price", binance: "Binance (backup)", cbcandles: "Coinbase price history", cbtrades: "Coinbase trades", cbbook: "Coinbase order book", gdelt: "GDELT news" };
+var SRCNAMES = { cbrates: "Coinbase spot rates (gold, euro)", cbtick: "Coinbase PAXG live bid/ask", cbpaxg: "Coinbase PAXG price", binance: "Binance (backup)", cbcandles: "Coinbase price history", cbtrades: "Coinbase trades", cbbook: "Coinbase order book", gdelt: "GDELT news", cal: "Economic calendar (ForexFactory feed)" };
 function renderSources(){
   var box = document.getElementById("sources"); if(!box) return; clear(box);
   Object.keys(SRCNAMES).forEach(function(k){
@@ -432,6 +465,11 @@ function computeForecast(){
     var mom = tanh(0.7*mz); if(Math.abs(rz) > 2.5) mom -= 0.25*Math.sign(rz);
     comps.push({ k: "Momentum", v: clamp(mom,-1,1), w: 0.35, note: "15m move " + sgn(P - p15, 2) });
   }
+  var g5 = lastN(S.ticks, 4);
+  if(g5.length >= 3){
+    var z3 = Math.log(P/g5[0].o)/(s1*Math.sqrt(3));
+    comps.push({ k: "Speed (3 min)", v: clamp(tanh(z3/1.6),-1,1), w: 0.15, note: "last 3m " + sgn(P - g5[0].o, 2) });
+  }
   var dU = usdChange(15);
   if(dU != null) comps.push({ k: "US dollar", v: clamp(tanh(-dU/0.05),-1,1), w: 0.25, note: "USD " + sgn(dU, 3) + "% in 15m" });
   var fl = flowStats(15);
@@ -445,6 +483,7 @@ function computeForecast(){
   var W = 0, X = 0; comps.forEach(function(c){ W += c.w; X += c.w*c.v; });
   var s = W ? X/W : 0; s *= (0.5 + 0.5*Math.min(1, W/0.8));
   var EDGE = 0.4, path = [];
+  if(eventGuard()) s1 *= 1.8; // big news nearby: much wider ranges
   for(var h = 0; h <= 30; h++){
     var sd = s1*Math.sqrt(Math.max(h, 0.0001))*P, m = P + (h ? s*EDGE*sd : 0);
     path.push({ m: m, l1: m - sd, u1: m + sd, sd: sd });
@@ -463,8 +502,18 @@ function maybeForecast(){
       LS.set("xauf_fc", S.forecasts);
       recordSignal(computeSignal(S.cur));
       renderForecast(); renderSignal();
+      return true;
     }
   }
+  return false;
+}
+// between 5-minute forecasts: refresh the call and re-check the signal on every price update,
+// so a BUY/SELL can fire within seconds instead of waiting for the next 5-minute mark
+function liveUpdate(){
+  var f = computeForecast(); if(!f) return;
+  S.cur = f;
+  recordSignal(computeSignal(f));
+  renderForecast(); renderSignal();
 }
 function evaluate(){
   evalSignals();
@@ -483,6 +532,136 @@ function evaluate(){
   if(changed){ LS.set("xauf_fc", S.forecasts); renderTrack(); renderPredChart(); }
 }
 
+// ---------- 1. trend filter (1-hour trend) ----------
+function trendInfo(){
+  var tk = lastN(S.ticks, 70); if(tk.length < 40) return null;
+  var P = tk[tk.length-1].p, first = tk[0].p, s1 = sigma1m();
+  var mins = (tk[tk.length-1].t - tk[0].t)/MIN || 60;
+  var z = Math.log(P/first)/(s1*Math.sqrt(mins));
+  var e = ema(tk.map(function(x){ return x.p; }), 30);
+  var dir = z > 0.8 && P > e ? 1 : z < -0.8 && P < e ? -1 : 0;
+  var strong = Math.abs(z) > 1.4;
+  return { z: z, dir: dir, strong: strong && dir !== 0, move: P - first, label: dir > 0 ? (strong ? "strong uptrend" : "uptrend") : dir < 0 ? (strong ? "strong downtrend" : "downtrend") : "no clear trend" };
+}
+
+// ---------- 2. news-event guard (economic calendar) ----------
+S.cal = LS.get("xauf_cal", null); // {at, events:[{t,title,impact,forecast,previous}]}
+function fetchCalendar(force){
+  if(!force && S.cal && Date.now() - S.cal.at < 3*60*MIN){ renderEvents(); return; }
+  getJSON("https://nfs.faireconomy.media/ff_calendar_thisweek.json", 12000).then(function(arr){
+    var ev = (arr || []).filter(function(e){ return e.country === "USD" && (e.impact === "High" || e.impact === "Medium"); })
+      .map(function(e){ return { t: Date.parse(e.date), title: e.title, impact: e.impact, forecast: e.forecast || "", previous: e.previous || "" }; })
+      .filter(function(e){ return !isNaN(e.t); }).sort(function(a,b){ return a.t - b.t; });
+    S.cal = { at: Date.now(), events: ev }; LS.set("xauf_cal", S.cal);
+    srcSet("cal", true, ev.length + " US events this week");
+    renderEvents();
+  }).catch(function(e){
+    srcSet("cal", false, e.message + (S.cal ? " (using saved copy)" : ""));
+    renderEvents();
+  });
+}
+function nextEvents(hours){
+  if(!S.cal) return [];
+  var now = Date.now();
+  return S.cal.events.filter(function(e){ return e.t > now - 30*MIN && e.t < now + hours*60*MIN; });
+}
+function eventGuard(){ // high-impact USD event within -15/+15 min (or 30 min before)
+  var now = Date.now(), hit = null;
+  nextEvents(1).forEach(function(e){ if(e.impact === "High" && !hit && now > e.t - 30*MIN && now < e.t + 15*MIN) hit = e; });
+  return hit;
+}
+function inDays(t){ var d = new Date(t), n = new Date(); return d.toDateString() === n.toDateString() ? "Today" : (new Date(n.getTime() + 864e5).toDateString() === d.toDateString() ? "Tomorrow" : d.toLocaleDateString([], { weekday: "short" })); }
+function renderEvents(){
+  var box = $("events"); if(!box) return; clear(box);
+  var g = eventGuard();
+  if(g){
+    var mins = Math.round((g.t - Date.now())/MIN);
+    box.appendChild(el("div",{cls:"evwarn",text:"⚠️ " + g.title + (mins > 0 ? " in " + mins + " min" : mins === 0 ? " now" : " " + (-mins) + " min ago") + " — expect sudden big moves. Trade signals are paused until 15 min after the release."}));
+  }
+  var list = nextEvents(36);
+  if(!S.cal){
+    box.appendChild(el("div",{cls:"small mut",text:"Calendar feed isn't reachable on this network. Be careful around the usual US release times: 13:30 and 15:00 UTC (6:30 PM and 8:00 PM Maldives time), and Fed decisions at 19:00 UTC."}));
+    return;
+  }
+  if(!list.length){ box.appendChild(el("div",{cls:"small mut",text:"No important US events in the next 36 hours."})); return; }
+  list.slice(0, 8).forEach(function(e){
+    var past = e.t < Date.now();
+    box.appendChild(el("div",{cls:"evrow" + (past ? " past" : "")},[
+      el("span",{cls:"evimp " + (e.impact === "High" ? "hi" : "md"), text: e.impact === "High" ? "HIGH" : "MED"}),
+      el("div",{style:"flex:1"},[ el("div",{style:"font-weight:600",text: e.title}), el("div",{cls:"tiny mut",text: inDays(e.t) + " " + hhmm(e.t) + (e.forecast ? " · forecast " + e.forecast : "") + (e.previous ? " · previous " + e.previous : "")}) ])
+    ]));
+  });
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:6px",text:"High-impact US news often moves gold $20–50 in seconds. Signals pause from 30 min before to 15 min after."}));
+}
+
+// ---------- 3. alerts ----------
+S.alertsOn = LS.get("xauf_alerts", false);
+var audioCtx = null;
+function beep(kind){
+  if(!S.alertsOn) return;
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var notes = kind === "BUY" ? [660, 880] : kind === "SELL" ? [880, 520] : [740, 740, 740];
+    notes.forEach(function(f, i){
+      var o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = f; o.type = "sine"; o.connect(g); g.connect(audioCtx.destination);
+      var t = audioCtx.currentTime + i*0.22;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.35, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.start(t); o.stop(t + 0.21);
+    });
+  }catch(e){}
+  try{ if(navigator.vibrate) navigator.vibrate(kind === "NEWS" ? [200,100,200,100,200] : [250,120,250]); }catch(e){}
+}
+function toast(text, kind){
+  var t = $("toast"); t.textContent = text; t.className = "toast show " + (kind || "");
+  clearTimeout(toast._h); toast._h = setTimeout(function(){ t.className = "toast"; }, 12000);
+  if(S.alertsOn){
+    try{ if(window.Notification && Notification.permission === "granted") new Notification("Gold Forecaster", { body: text }); }catch(e){}
+  }
+  document.title = (kind === "b" ? "🟢 " : kind === "s" ? "🔴 " : "⚠️ ") + "XAU/USD Forecaster";
+}
+function alertSignal(sig){
+  if(!sig || sig.side === "WAIT") return;
+  var txt = sig.side + " signal at $" + fmt(mt(sig.entry),2) + " · stop $" + fmt(mt(sig.stop),2) + " · target $" + fmt(mt(sig.tp1),2) + (S.mt5off ? " (MT5 prices)" : "");
+  toast(txt, sig.side === "BUY" ? "b" : "s"); beep(sig.side);
+}
+var newsAlerted = LS.get("xauf_newsalerted", {});
+function checkNewsAlert(){
+  nextEvents(1).forEach(function(e){
+    var mins = (e.t - Date.now())/MIN;
+    if(e.impact === "High" && mins > 0 && mins <= 10 && !newsAlerted[e.t + e.title]){
+      newsAlerted[e.t + e.title] = 1; LS.set("xauf_newsalerted", newsAlerted);
+      toast("⚠️ " + e.title + " in " + Math.ceil(mins) + " min — expect big moves", "n"); beep("NEWS");
+    }
+  });
+}
+function setupAlerts(){
+  var b = $("alertbtn");
+  function paint(){ b.textContent = S.alertsOn ? "🔔 Alerts on" : "🔕 Turn on alerts"; b.className = "btn" + (S.alertsOn ? " gold" : ""); }
+  b.onclick = function(){
+    S.alertsOn = !S.alertsOn; LS.set("xauf_alerts", S.alertsOn); paint();
+    if(S.alertsOn){
+      try{ if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); }catch(e){}
+      try{ if(window.Notification && Notification.permission === "default") Notification.requestPermission(); }catch(e){}
+      beep("BUY"); toast("Alerts on — you'll hear a sound when a BUY/SELL signal appears or big news is 10 min away. Keep this app open on screen.", "");
+    }
+  };
+  paint();
+}
+
+S.mt5off = LS.get("xauf_mt5off", 0);
+function mt(v){ return v + (S.mt5off || 0); }
+function setupMT5(){
+  var inp = $("mt5in"), btn = $("mt5btn"), clr = $("mt5clr");
+  function paint(){ $("mt5note").textContent = S.mt5off ? "Levels below are adjusted to your MT5 price (offset " + sgn(S.mt5off,2) + "). Re-match once a day — broker prices drift." : "Type the gold price your MT5 shows right now (bid), then tap Match. All levels will then be shown in your broker's prices."; clr.style.display = S.mt5off ? "" : "none"; }
+  btn.onclick = function(){
+    var v = parseFloat(String(inp.value).replace(/,/g, "")), P = S.ticks.length ? S.ticks[S.ticks.length-1].p : null;
+    if(!P || !(v > 0) || Math.abs(v - P) > 100){ $("mt5note").textContent = "That doesn't look like a gold price close to $" + fmt(P,2) + " — please check and try again."; return; }
+    S.mt5off = +(v - P).toFixed(2); LS.set("xauf_mt5off", S.mt5off); inp.value = ""; paint(); renderSignal(); renderPrice();
+  };
+  clr.onclick = function(){ S.mt5off = 0; LS.set("xauf_mt5off", 0); paint(); renderSignal(); renderPrice(); };
+  paint();
+}
 // ---------- trade signal (BUY / SELL / WAIT) ----------
 S.signals = LS.get("xauf_sig", []).filter(function(x){ return x && x.t0 > Date.now() - 48*60*MIN; });
 function computeSignal(f){
@@ -496,6 +675,13 @@ function computeSignal(f){
   var buyOk = f.s >= 0.22 && f.pu >= 0.54 && flowB > 0.4;
   var sellOk = f.s <= -0.22 && f.pu <= 0.46 && flowB < 0.6;
   if(f.stale) buyOk = sellOk = false;
+  var tr = trendInfo(); sig.trend = tr;
+  var blockedBy = null;
+  if(tr && tr.strong && buyOk && tr.dir < 0){ buyOk = false; blockedBy = "BUY skipped: it would go against the strong 1-hour downtrend"; }
+  if(tr && tr.strong && sellOk && tr.dir > 0){ sellOk = false; blockedBy = "SELL skipped: it would go against the strong 1-hour uptrend"; }
+  var ev = eventGuard();
+  if(ev && (buyOk || sellOk)){ buyOk = sellOk = false; blockedBy = "paused for " + ev.title + " at " + hhmm(ev.t) + " — too risky around big news"; }
+  else if(ev) blockedBy = "paused for " + ev.title + " at " + hhmm(ev.t);
   if(buyOk || sellOk){
     var dir = buyOk ? 1 : -1;
     var strong = Math.abs(f.s) >= 0.45;
@@ -507,7 +693,7 @@ function computeSignal(f){
     var stop = entry - dir*1.2*sd30;
     if(lvl){ var cand = lvl.v - dir*0.4*sd15, gap = dir*(entry - cand); if(gap > 0.6*sd30 && gap < 1.8*sd30) stop = cand; } // tuck the stop just beyond the level
     var risk = Math.abs(entry - stop);
-    sig.side = dir > 0 ? "BUY" : "SELL";
+    sig.side = dir > 0 ? "BUY" : "SELL"; sig.sd15 = sd15;
     sig.entry = +entry.toFixed(2); sig.stop = +stop.toFixed(2);
     sig.tp1 = +(entry + dir*1.0*risk).toFixed(2); sig.tp2 = +(entry + dir*1.8*risk).toFixed(2);
     sig.atMarket = strong || Math.abs(entry - P) < 0.15*sd15;
@@ -515,21 +701,23 @@ function computeSignal(f){
     sig.fillProb = sig.atMarket ? 1 : clamp(2*(1 - Phi(dist/sd15)), 0, 1);
     sig.validUntil = f.t0 + 30*MIN;
     sig.reasons = top.filter(function(c){ return Math.sign(c.v) === dir; }).map(function(c){ return c.k.toLowerCase() + " (" + c.note + ")"; });
+    if(tr && tr.dir === dir) sig.reasons.push("in line with the 1-hour " + tr.label);
   } else {
     sig.buyAbove = res ? res.v : P + sd15;
     sig.sellBelow = sup ? sup.v : P - sd15;
-    sig.why = f.stale ? "prices aren't updating" : Math.abs(f.s) < 0.22 ? "signals are mixed, so there is no clear edge" : "order flow disagrees with the forecast";
+    sig.why = blockedBy || (f.stale ? "prices aren't updating" : Math.abs(f.s) < 0.22 ? "signals are mixed, so there is no clear edge" : "order flow disagrees with the forecast");
   }
   return sig;
 }
 function recordSignal(sig){
   var last = S.signals[S.signals.length-1];
   var active = last && !last.result && last.side !== "WAIT";
-  if(sig.side === "WAIT"){ S.cur.sig = sig; return; }
+  if(sig.side === "WAIT"){ S.cur.sig = active ? last : sig; if(active) last.waitNote = sig.why; return; }
   if(active && last.side === sig.side){ S.cur.sig = last; return; } // keep the running signal instead of spamming new ones
   if(active && last.side !== sig.side){ closeSignal(last, "reversed", S.ticks[S.ticks.length-1].p); }
   S.signals.push(sig); if(S.signals.length > 200) S.signals = S.signals.slice(-200);
   LS.set("xauf_sig", S.signals); S.cur.sig = sig;
+  alertSignal(sig);
 }
 function closeSignal(x, why, price){
   var dir = x.side === "BUY" ? 1 : -1;
@@ -567,25 +755,33 @@ function renderSignal(){
   var badge = el("div",{cls:"sigbadge " + (sig.side === "BUY" ? "b" : sig.side === "SELL" ? "s" : "w"), text: sig.side});
   var headTxt;
   if(sig.side === "WAIT"){
-    headTxt = "No good entry right now — " + sig.why + ".";
+    headTxt = "No good entry right now — " + sig.why + "." + (sig.trend ? " (1-hour: " + sig.trend.label + ")" : "");
   } else if(sig.result){
     headTxt = sig.side + " signal from " + hhmm(sig.t0) + " finished: " + ({target:"target hit ✓", stop:"stopped out ✗", missed:"price never reached the entry", expired:"expired", reversed:"reversed"})[sig.result];
-  } else if(sig.atMarket || sig.filled){
-    headTxt = (sig.side === "BUY" ? "Good point to buy now" : "Good point to sell now") + " (around $" + fmt(sig.entry,2) + ").";
   } else {
-    headTxt = (sig.side === "BUY" ? "Buy on a dip to $" : "Sell on a bounce to $") + fmt(sig.entry,2) + " — " + Math.round(sig.fillProb*100) + "% chance price gets there in the next 15 min.";
+    var dr = sig.side === "BUY" ? 1 : -1, past = dr*(P - sig.entry), sdz = sig.sd15 || 3;
+    var startGap = Math.max(0, dr*(sig.p0 - sig.entry)); // a dip/bounce entry starts away from price on purpose
+    var chase = (sig.atMarket || sig.filled) ? past > 0.4*sdz : past > startGap + 0.6*sdz;
+    if(chase){
+      headTxt = "Price already moved $" + fmt(past,2) + " past the entry — don't chase. Wait for a pullback to $" + fmt(mt(sig.entry),2) + " or the next signal.";
+    } else if(sig.atMarket || sig.filled){
+      headTxt = (sig.side === "BUY" ? "Good point to buy now" : "Good point to sell now") + " (around $" + fmt(mt(sig.entry),2) + ").";
+    } else {
+      headTxt = (sig.side === "BUY" ? "Buy on a dip to $" : "Sell on a bounce to $") + fmt(mt(sig.entry),2) + " — " + Math.round(sig.fillProb*100) + "% chance price gets there in the next 15 min. Tip: place a limit order there.";
+    }
+    if(sig.waitNote && !sig.result) headTxt += " (Latest check: " + sig.waitNote + ".)";
   }
-  box.appendChild(el("div",{cls:"sighead"},[ badge, el("div",{},[ el("div",{cls:"headline",style:"margin:0",text: headTxt}), el("div",{cls:"tiny mut",text: sig.side === "WAIT" ? "Updated " + hhmm(sig.t0) + " · checks again every 5 minutes" : "Signal strength " + sig.strength + "% · issued " + hhmm(sig.t0) + (sig.result ? "" : " · valid until " + hhmm(sig.validUntil))}) ]) ]));
+  box.appendChild(el("div",{cls:"sighead"},[ badge, el("div",{},[ el("div",{cls:"headline",style:"margin:0",text: headTxt}), el("div",{cls:"tiny mut",text: sig.side === "WAIT" ? "Checked " + new Date(sig.t0).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"}) + " · re-checks every 15 seconds" : "Signal strength " + sig.strength + "% · " + (sig.trend ? "1h: " + sig.trend.label + " · " : "") + "issued " + hhmm(sig.t0) + " (" + ago(sig.t0) + ")" + (sig.result ? "" : " · valid until " + hhmm(sig.validUntil))}) ]) ]));
   if(sig.side === "WAIT"){
     box.appendChild(el("div",{cls:"siglv"},[
-      el("div",{},[ el("div",{cls:"tiny mut",text:"Consider buying if price breaks above"}), el("div",{cls:"up",style:"font-weight:700;font-size:16px",text:"$" + fmt(sig.buyAbove,2)}) ]),
-      el("div",{},[ el("div",{cls:"tiny mut",text:"Consider selling if price breaks below"}), el("div",{cls:"dn",style:"font-weight:700;font-size:16px",text:"$" + fmt(sig.sellBelow,2)}) ])
+      el("div",{},[ el("div",{cls:"tiny mut",text:"Consider buying if price breaks above"}), el("div",{cls:"up",style:"font-weight:700;font-size:16px",text:"$" + fmt(mt(sig.buyAbove),2)}) ]),
+      el("div",{},[ el("div",{cls:"tiny mut",text:"Consider selling if price breaks below"}), el("div",{cls:"dn",style:"font-weight:700;font-size:16px",text:"$" + fmt(mt(sig.sellBelow),2)}) ])
     ]));
   } else {
     var dir = sig.side === "BUY" ? 1 : -1;
     var rows = [["Entry", sig.entry, ""], ["Stop-loss", sig.stop, "dn"], ["Target 1", sig.tp1, "up"], ["Target 2", sig.tp2, "up"]];
     box.appendChild(el("div",{cls:"siglv4"}, rows.map(function(r){
-      return el("div",{},[ el("div",{cls:"tiny mut",text:r[0]}), el("div",{cls:r[2],style:"font-weight:700;font-size:15px;font-variant-numeric:tabular-nums",text:"$" + fmt(r[1],2)}), el("div",{cls:"tiny mut",text: r[0] === "Entry" ? "now $" + fmt(P,2) : sgn(dir*(r[1] - sig.entry),2)}) ]);
+      return el("div",{},[ el("div",{cls:"tiny mut",text:r[0]}), el("div",{cls:r[2],style:"font-weight:700;font-size:15px;font-variant-numeric:tabular-nums",text:"$" + fmt(mt(r[1]),2)}), el("div",{cls:"tiny mut",text: r[0] === "Entry" ? "now $" + fmt(mt(P),2) : sgn(dir*(r[1] - sig.entry),2)}) ]);
     })));
     var rr = Math.abs(sig.tp1 - sig.entry)/Math.abs(sig.entry - sig.stop);
     box.appendChild(el("div",{cls:"small",style:"margin-top:8px",text:"Why: " + (sig.reasons.length ? sig.reasons.join(", ") : "overall forecast leans " + (dir > 0 ? "up" : "down")) + ". Risk $" + fmt(Math.abs(sig.entry - sig.stop),2) + " to make $" + fmt(Math.abs(sig.tp1 - sig.entry),2) + "–" + fmt(Math.abs(sig.tp2 - sig.entry),2) + " (1:" + rr.toFixed(1) + "–1:" + (rr*1.8).toFixed(1) + ")."}));
@@ -598,7 +794,7 @@ function renderSignal(){
   box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:10px;border-top:1px solid var(--line);padding-top:8px",text: done.length
     ? "Past signals (48h, this device): " + wins + " of " + done.length + " profitable · net " + sgn(pnl,2) + " $/oz" + (missed ? " · " + missed + " never reached entry" : "")
     : "Past signals are scored here automatically: target hit, stop hit, or closed after 60 minutes."}));
-  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:4px",text:"Signals come from a statistical model, not a guarantee. Always use a stop-loss and only risk what you can afford to lose."}));
+  box.appendChild(el("div",{cls:"tiny mut",style:"margin-top:4px",text:"Signals come from a statistical model, not a guarantee. Always use a stop-loss and only risk what you can afford to lose." + (sig.side === "BUY" ? " On Exness you buy at the Ask, which is the Bid plus the spread." : "")}));
 }
 
 // ---------- rendering ----------
@@ -606,9 +802,9 @@ function renderPrice(){
   var last = S.ticks[S.ticks.length-1]; if(!last) return;
   $("px").textContent = fmt(last.p, 2);
   if(S.d24){ var e = $("pxchg"); e.className = "chg " + cls(S.d24.chg); e.textContent = sgn(S.d24.chg, 2) + " (" + sgn(S.d24.pct, 2) + "%) " + S.d24.span + "h"; }
-  $("pxlabel").textContent = "Gold · USD/oz · " + (S.goldSrc || "");
+  $("pxlabel").textContent = "Gold · USD/oz · " + (S.goldSrc || "") + (S.mt5off ? " · your MT5 ≈ $" + fmt(mt(last.p),2) : "");
   var wk = new Date().getUTCDay(), weekend = wk === 6 || (wk === 0 && new Date().getUTCHours() < 22) || (wk === 5 && new Date().getUTCHours() >= 22);
-  $("asof").textContent = "Updated " + hhmm(S.lastOk) + " · refreshes every minute" + (weekend ? " · gold market closed for the weekend; PAXG still trades" : "");
+  $("asof").textContent = "Updated " + new Date(S.lastOk).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"}) + " · refreshes every 15 seconds" + (weekend ? " · gold market closed for the weekend; PAXG still trades" : "");
 }
 function setChip(id, v, p0){ $(id).textContent = fmt(v, 2); var d = $(id + "d"); d.className = "d " + cls(v - p0); d.textContent = sgn(v - p0, 2); }
 function renderForecast(){
@@ -692,6 +888,7 @@ function renderDrivers(){
   if(S.d24){ var e4 = Math.sign(S.d24.pct); d.appendChild(dv("Gold last " + S.d24.span + "h", sgn(S.d24.pct,2) + "%", e4 > 0 ? "▲ uptrend today" : e4 < 0 ? "▼ downtrend today" : "• flat", e4)); }
   var s = sigma1m()*Math.sqrt(30)*(S.ticks.length ? S.ticks[S.ticks.length-1].p : 0);
   d.appendChild(dv("Volatility (30m swing)", "±$" + fmt(s,2), s > 8 ? "▲ choppy — wider ranges" : "• calm", 0));
+  var tr = trendInfo(); if(tr) d.appendChild(dv("1-hour trend", sgn(tr.move,2), tr.dir > 0 ? "▲ " + tr.label : tr.dir < 0 ? "▼ " + tr.label : "• " + tr.label, tr.dir));
   var ns = newsScore(); if(ns != null){ var e5 = ns > 0.1 ? 1 : ns < -0.1 ? -1 : 0; d.appendChild(dv("News tone (6h)", sgn(ns,2), lab(e5), e5)); }
 }
 function renderNews(){
@@ -845,15 +1042,19 @@ function tick(){
   var slotEnd = (Math.floor(now/(5*MIN)) + 1)*5*MIN, s = Math.max(0, Math.round((slotEnd - now)/1000));
   $("countdown").textContent = "Next forecast in " + Math.floor(s/60) + ":" + ("0" + (s%60)).slice(-2);
   if(document.hidden) return;
-  // refresh prices once per minute, a few seconds after the minute candle closes
-  var ps = Math.floor((now - 3000)/MIN);
+  // refresh prices every 15 seconds
+  var ps = Math.floor(now/15000);
   if(ps !== lastPriceSlot){ lastPriceSlot = ps; fetchPrices().then(fetchBook); }
-  if(now - lastNewsAt >= 10*MIN){ lastNewsAt = now; fetchNews(); }
+  if(now - lastNewsAt >= 10*MIN){ lastNewsAt = now; fetchNews(); fetchCalendar(false); }
 }
 setInterval(tick, 1000);
+setInterval(function(){ checkNewsAlert(); renderEvents(); }, 30000);
 setInterval(function(){ renderChart(); }, 15000);
 document.addEventListener("visibilitychange", function(){ if(!document.hidden){ lastPriceSlot = -1; tick(); } });
 renderTrack();
+setupAlerts();
+setupMT5();
+renderEvents();
 tick();
 })();
 </script>
